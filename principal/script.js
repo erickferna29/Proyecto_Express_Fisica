@@ -35,6 +35,7 @@ let stats = {
 const K = 18000; // Constante de Coulomb
 const DT = 0.016; // Delta tiempo
 const FRICTION = 0.994; // Fricción
+const WALL_MARGIN = 50; // Margen de bordes para juego
 
 // Parámetros de disparo
 const MAX_POWER = 1200; // Potencia máxima
@@ -334,11 +335,20 @@ function update() {
         ball.x += ball.vx * DT;
         ball.y += ball.vy * DT;
 
-        // Colisiones con bordes
-        if (ball.x < 0 || ball.x > canvas.width) ball.vx *= -0.8;
-        if (ball.y < 0 || ball.y > canvas.height) ball.vy *= -0.8;
-        ball.x = Math.max(ball.r, Math.min(canvas.width - ball.r, ball.x));
-        ball.y = Math.max(ball.r, Math.min(canvas.height - ball.r, ball.y));
+        // Colisiones con bordes (CON MARGEN DE SEGURIDAD)
+        // Eje X (Izquierda / Derecha)
+        if (ball.x < ball.r + WALL_MARGIN || ball.x > canvas.width - ball.r - WALL_MARGIN) {
+            ball.vx *= -0.8;
+        }
+        
+        // Eje Y (Arriba / Abajo)
+        if (ball.y < ball.r + WALL_MARGIN || ball.y > canvas.height - ball.r - WALL_MARGIN) {
+            ball.vy *= -0.8;
+        }
+
+        // Limitar posición estrictamente (Clamp) para que no se salga del margen
+        ball.x = Math.max(ball.r + WALL_MARGIN, Math.min(canvas.width - ball.r - WALL_MARGIN, ball.x));
+        ball.y = Math.max(ball.r + WALL_MARGIN, Math.min(canvas.height - ball.r - WALL_MARGIN, ball.y));
 
         // Verificar victoria (bola en hoyo)
         let dxH = ball.x - hole.x;
