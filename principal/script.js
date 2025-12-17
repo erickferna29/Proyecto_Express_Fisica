@@ -38,10 +38,18 @@ let stats = {
 };
 
 // ===== CONSTANTES FÍSICAS =====
-const K = 18000; // Constante de Coulomb
+const K = 2000; // Constante de Coulomb
 const DT = 0.016; // Delta tiempo
 const FRICTION = 0.994; // Fricción
 const WALL_MARGIN = 50; // Margen de bordes para juego
+// Función para detectar móvil y calcular márgenes
+function isMobile() {
+    return window.innerWidth <= 768;
+}
+
+function getTopMargin() {
+    return isMobile() ? 120 : 80;
+}
 
 // Parámetros de disparo
 const MAX_POWER = 1200; // Potencia máxima
@@ -69,12 +77,12 @@ function getGamePositions() {
     };
 }
 
-// Función para generar posición aleatoria del hoyo
 function generateRandomHolePosition() {
-    const margin = 150; // Margen desde los bordes
+    const margin = 150;
+    const topMargin = getTopMargin() + 50; // Margen extra arriba
     return {
         x: margin + Math.random() * (canvas.width - margin * 2),
-        y: margin + Math.random() * (canvas.height - margin * 2)
+        y: topMargin + Math.random() * (canvas.height - topMargin - margin)
     };
 }
 
@@ -150,16 +158,18 @@ function generateRandomObstacles() {
         
         // Ajustar a márgenes seguros
         const finalX = Math.max(200, Math.min(canvas.width - 200, x));
-        const finalY = Math.max(100, Math.min(canvas.height - 100, y));
-
+        const finalY = Math.max(getTopMargin() + 50, Math.min(canvas.height - 100, y));
+// Tamaño adaptativo según pantalla
+        const baseSize = isMobile() ? 12 : 15;
+        const sizeVariation = isMobile() ? 6 : 8;
+        
         obstacles.push({
             x: finalX,
             y: finalY,
-            // Física dinámica (como acordamos antes)
-            vx: (Math.random() - 0.5) * 20, 
-            vy: (Math.random() - 0.5) * 20,
+            vx: (Math.random() - 0.5) , 
+            vy: (Math.random() - 0.5) ,
             q: isPositive ? (20 + Math.random() * 30) : -(20 + Math.random() * 30),
-            r: 30 + Math.random() * 15,
+            r: baseSize + Math.random() * sizeVariation,
             mass: 5,
             color: isPositive ? '#ff3333' : '#00ccff'
         });
@@ -194,10 +204,10 @@ function updateLayoutOnResize() {
     }
     
     // Reposicionar obstáculos para que no queden fuera
-    obstacles.forEach(obs => {
-        // Simplemente aseguramos que sigan dentro del canvas nuevo
+obstacles.forEach(obs => {
+        const topLimit = getTopMargin();
         obs.x = Math.max(obs.r + WALL_MARGIN, Math.min(canvas.width - obs.r - WALL_MARGIN, obs.x));
-        obs.y = Math.max(obs.r + WALL_MARGIN, Math.min(canvas.height - obs.r - WALL_MARGIN, obs.y));
+        obs.y = Math.max(obs.r + topLimit, Math.min(canvas.height - obs.r - WALL_MARGIN, obs.y));
     });
 }
 
@@ -235,15 +245,16 @@ function resetGame() {
  * Función para regenerar un obstáculo en posición aleatoria
  */
 function respawnObstacle(obs) {
-    const margin = WALL_MARGIN + 60; // Margen seguro
+    const margin = WALL_MARGIN + 60;
+    const topMargin = getTopMargin() + 40;
     
     // Nueva posición aleatoria
     obs.x = margin + Math.random() * (canvas.width - margin * 2);
-    obs.y = margin + Math.random() * (canvas.height - margin * 2);
+    obs.y = topMargin + Math.random() * (canvas.height - topMargin - margin);
     
     // Nueva velocidad aleatoria
-    obs.vx = (Math.random() - 0.5) * 15;
-    obs.vy = (Math.random() - 0.5) * 15;
+    obs.vx = (Math.random() - 0.5) * 2;
+    obs.vy = (Math.random() - 0.5) * 2;
     
     // Opcional: Invertir el color momentáneamente o cambiar su carga ligeramente
     // para dar variedad, pero por ahora mantenemos sus propiedades físicas.
@@ -356,9 +367,10 @@ function update() {
             obs.vx *= -0.8;
             obs.x = Math.max(obs.r + WALL_MARGIN, Math.min(canvas.width - obs.r - WALL_MARGIN, obs.x));
         }
-        if (obs.y < obs.r + WALL_MARGIN || obs.y > canvas.height - obs.r - WALL_MARGIN) {
+        const topLimit = getTopMargin();
+        if (obs.y < obs.r + topLimit || obs.y > canvas.height - obs.r - WALL_MARGIN) {
             obs.vy *= -0.8;
-            obs.y = Math.max(obs.r + WALL_MARGIN, Math.min(canvas.height - obs.r - WALL_MARGIN, obs.y));
+            obs.y = Math.max(obs.r + topLimit, Math.min(canvas.height - obs.r - WALL_MARGIN, obs.y));
         }
     });
 
@@ -463,6 +475,7 @@ function update() {
             ball.vx = 0; 
             ball.vy = 0;
             debugDiv.innerText = "🟢 SISTEMA: BOLA DETENIDA";
+            telemetryPanel.style.display = 'none';
         }
 
         // Actualizar posición
@@ -476,13 +489,14 @@ function update() {
         }
         
         // Eje Y (Arriba / Abajo)
-        if (ball.y < ball.r + WALL_MARGIN || ball.y > canvas.height - ball.r - WALL_MARGIN) {
+        const topLimit = getTopMargin();
+        if (ball.y < ball.r + topLimit || ball.y > canvas.height - ball.r - WALL_MARGIN) {
             ball.vy *= -0.8;
         }
 
-        // Limitar posición estrictamente (Clamp) para que no se salga del margen
+        // Limitar posición estrictamente (Clamp)
         ball.x = Math.max(ball.r + WALL_MARGIN, Math.min(canvas.width - ball.r - WALL_MARGIN, ball.x));
-        ball.y = Math.max(ball.r + WALL_MARGIN, Math.min(canvas.height - ball.r - WALL_MARGIN, ball.y));
+        ball.y = Math.max(ball.r + topLimit, Math.min(canvas.height - ball.r - WALL_MARGIN, ball.y));
 
         // Verificar victoria (bola en hoyo)
         let dxH = ball.x - hole.x;
@@ -607,6 +621,7 @@ function draw() {
         ctx.fillStyle = obs.color === '#ff3333' ? 
             'rgba(255,50,50,0.2)' : 'rgba(0,200,255,0.2)';
         ctx.fill();
+        
         
         // Obstáculo con brillo
         ctx.save();
