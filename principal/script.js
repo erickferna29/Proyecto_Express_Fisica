@@ -108,16 +108,26 @@ let dragCurrent = { x: 0, y: 0 };
 // ===== FUNCIONES DEL JUEGO =====
 
 /**
- * Genera obstáculos aleatorios (SOLO llamar en reset/inicio)
+ * Genera obstáculos aleatorios (DIFICULTAD PROGRESIVA)
  */
 function generateRandomObstacles() {
     obstacles = [];
     const pos = getGamePositions();
     
-    // Generar exactamente 2 partículas positivas y 2 negativas
-    const particleTypes = [true, true, false, false]; // true = positivo, false = negativo
+    // === DIFICULTAD DINÁMICA ===
+    // Base: 4 obstáculos.
+    // Progresión: +1 obstáculo por cada victoria (stats.wins).
+    // Tope (opcional): Limitamos a 15 para que no sea imposible jugar.
+    const obstacleCount = Math.min(15, 4 + stats.wins);
     
-    // Mezclar el array para posiciones aleatorias
+    // Generar tipos de partículas (Alternar Positivo/Negativo para mantener equilibrio)
+    const particleTypes = [];
+    for(let i = 0; i < obstacleCount; i++) {
+        // Si i es par = true (positivo), si es impar = false (negativo)
+        particleTypes.push(i % 2 === 0);
+    }
+    
+    // Mezclar el array para que no siempre empiece con positivo
     for(let i = particleTypes.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [particleTypes[i], particleTypes[j]] = [particleTypes[j], particleTypes[i]];
@@ -125,28 +135,32 @@ function generateRandomObstacles() {
     
     for(let i = 0; i < particleTypes.length; i++) {
         const isPositive = particleTypes[i];
-        // Generar en el área central
+        
+        // Generar posición
         const minX = pos.ballStartX + 100;
         const maxX = canvas.width - 100;
         const x = minX + Math.random() * (maxX - minX);
-        const y = pos.cy + (Math.random() - 0.5) * (canvas.height * 0.6);
+        const y = pos.cy + (Math.random() - 0.5) * (canvas.height * 0.8);
         
-        // Guardamos x, y ADEMÁS de baseX, baseY
+        // Ajustar a márgenes seguros
         const finalX = Math.max(200, Math.min(canvas.width - 200, x));
         const finalY = Math.max(100, Math.min(canvas.height - 100, y));
 
         obstacles.push({
             x: finalX,
             y: finalY,
-            // Eliminamos baseX y baseY, ya no los necesitamos porque se moverán libremente
-            vx: (Math.random() - 0.5) * 20, // Pequeño impulso inicial aleatorio
+            // Física dinámica (como acordamos antes)
+            vx: (Math.random() - 0.5) * 20, 
             vy: (Math.random() - 0.5) * 20,
             q: isPositive ? (20 + Math.random() * 30) : -(20 + Math.random() * 30),
             r: 30 + Math.random() * 15,
-            mass: 5, // Son 5 veces más pesados que la bola (para que se sientan sólidos)
+            mass: 5,
             color: isPositive ? '#ff3333' : '#00ccff'
         });
     }
+    
+    // Mensaje de sistema para el jugador
+    debugDiv.innerText = `🟢 NIVEL ${stats.wins + 1} - OBSTÁCULOS: ${obstacleCount}`;
 }
 
 /**
@@ -887,13 +901,14 @@ window.addEventListener('resize', () => {
 btnStartGame.addEventListener('click', () => {
     startScreen.style.display = 'none'; // Ocultar menú
     gameActive = true; // Activar controles
-    resetGame(); // Iniciar limpio
     
     // Reiniciar estadísticas globales al empezar juego nuevo
     stats.wins = 0;
     statWins.innerText = "0";
     stats.bestScore = null;
     statBest.innerText = "--";
+    
+    resetGame(); // Iniciar limpio
 });
 
 // 2. VOLVER AL MENÚ (Desde Victoria)
