@@ -160,14 +160,15 @@
         <h2>⚡ CONTROL ELÉCTRICO</h2>
         
         <div class="control-group">
-            <label>🔋 CARGA: <span id="valCarga" style="color:#ffff00; font-size:18px;">+10</span> µC</label>
+            <label>🔋 CARGA: <span id="valCarga" style="color:#ff3333; font-size:18px;">+10</span> µC</label>
             <input type="range" id="sliderCarga" min="-20" max="20" value="10" step="1">
             <div style="font-size:11px; color:#00ffff; text-align:center; margin-top:5px;">
-                ⚡ Positivo = Repele Rojo | Negativo = Atrae Rojo
+                📍 <b>Rojo (+)</b>: Repele ROJOS, Atrae AZULES<br>
+                📍 <b>Azul (-)</b>: Atrae ROJOS, Repele AZULES
             </div>
         </div>
 
-        <button id="btnReset">🔄 RESET NIVEL</button>
+        <button id="btnReset">🔄 NUEVO NIVEL</button>
         
         <div style="margin-top:20px; font-size:12px; border-top:2px solid rgba(0,255,255,0.3); padding-top:15px; color:#00ffff;">
             <div style="text-align:center; margin-bottom:10px; font-weight:bold; font-size:14px;">📋 INSTRUCCIONES</div>
@@ -175,6 +176,7 @@
             🎯 Click en la bola<br>
             🖱️ Arrastra para apuntar<br>
             🚀 Suelta para disparar<br>
+            💥 <b>Dispara múltiples veces!</b><br>
             ⌨️ Presiona <span style="color:#ffd700; font-weight:bold;">R</span> para reiniciar
             </div>
         </div>
@@ -223,11 +225,12 @@
     };
 
     // --- FÍSICA ---
-    const K = 25000;     
-    const DT = 0.5;      
-    const FRICTION = 0.96; 
-    const MAX_POWER = 35; 
-    const POWER_SENSITIVITY = 0.25;
+    const K = 18000;  // Más fuerza electromagnética
+    const DT = 0.016;  // 60 FPS
+    const FRICTION = 0.994; // Menos fricción
+    const MAX_POWER = 100; // POTENCIA BRUTAL
+    const POWER_SENSITIVITY = 1.2; // MUY sensible
+    const SHOT_DURATION = 5000; // 5 segundos antes de detenerse (en milisegundos)
     
     // Partículas
     let particles = [];
@@ -237,12 +240,29 @@
     let cy = canvas.height / 2;
     let hole = { x: canvas.width * 0.85, y: cy, r: 25 };
     
-    // Obstáculos (Fijos)
-    let obstacles = [
-        { x: cx - 150, y: cy - 100, q: 60, r: 40, color: '#ff3333' }, 
-        { x: cx + 150, y: cy + 100, q: -50, r: 40, color: '#00ccff' }, 
-        { x: cx, y: cy - 200, q: 80, r: 50, color: '#ff3333' }       
-    ];
+    // Función para generar obstáculos aleatorios
+    function generateRandomObstacles() {
+        obstacles = [];
+        const numObstacles = 3 + Math.floor(Math.random() * 2); // 3-4 obstáculos
+        
+        for(let i = 0; i < numObstacles; i++) {
+            const isPositive = Math.random() > 0.5;
+            const x = cx + (Math.random() - 0.5) * (canvas.width * 0.5);
+            const y = cy + (Math.random() - 0.5) * (canvas.height * 0.6);
+            
+            obstacles.push({
+                x: Math.max(200, Math.min(canvas.width - 200, x)),
+                y: Math.max(100, Math.min(canvas.height - 100, y)),
+                q: isPositive ? (20 + Math.random() * 30) : -(20 + Math.random() * 30),
+                r: 30 + Math.random() * 15,
+                color: isPositive ? '#ff3333' : '#00ccff'
+            });
+        }
+    }
+    
+    // Obstáculos (Se generarán aleatoriamente)
+    let obstacles = [];
+    generateRandomObstacles();
 
     // Bola
     let ball = { 
@@ -250,7 +270,8 @@
         x: 150, y: cy, 
         vx: 0, vy: 0, 
         q: 10, r: 12, 
-        moving: false 
+        moving: false,
+        shotStartTime: 0 // Tiempo cuando se disparó
     };
     
     // Función para reposicionar elementos al cambiar tamaño
@@ -260,12 +281,8 @@
         hole.x = canvas.width * 0.85;
         hole.y = cy;
         
-        obstacles[0].x = cx - 150;
-        obstacles[0].y = cy - 100;
-        obstacles[1].x = cx + 150;
-        obstacles[1].y = cy + 100;
-        obstacles[2].x = cx;
-        obstacles[2].y = cy - 200;
+        // Regenerar obstáculos en nuevas posiciones aleatorias
+        generateRandomObstacles();
         
         if(!ball.moving) {
             ball.startY = cy;
@@ -287,7 +304,8 @@
         
         // Actualizar texto y color
         valCarga.innerText = (val > 0 ? "+" : "") + val;
-        valCarga.style.color = val > 0 ? "#ffff00" : "#00ccff"; // Amarillo o Azul
+        // ROJO para positivo, AZUL para negativo
+        valCarga.style.color = val > 0 ? "#ff3333" : "#00ccff";
         
         // Resetear visualmente si no se mueve
         if(!ball.moving) {
@@ -306,7 +324,11 @@
         particles = [];
         stats.shots = 0;
         statShots.innerText = stats.shots;
-        debugDiv.innerText = "🟢 SISTEMA: NIVEL REINICIADO";
+        
+        // Generar nuevos obstáculos aleatorios
+        generateRandomObstacles();
+        
+        debugDiv.innerText = "🟢 SISTEMA: NIVEL REINICIADO - NUEVOS OBSTÁCULOS";
         draw();
     }
 
@@ -326,6 +348,16 @@
         });
 
         if (ball.moving) {
+            // Verificar si han pasado 5 segundos desde el disparo
+            const elapsedTime = Date.now() - ball.shotStartTime;
+            if (elapsedTime >= SHOT_DURATION) {
+                ball.moving = false;
+                ball.vx = 0;
+                ball.vy = 0;
+                debugDiv.innerText = "⏱️ SISTEMA: TIEMPO AGOTADO - LISTA PARA DISPARAR";
+                return;
+            }
+            
             let fx = 0, fy = 0;
 
             obstacles.forEach(obs => {
@@ -335,12 +367,12 @@
                 let dist = Math.sqrt(distSq);
 
                 // Rebote Obstáculos con efectos
-                if (dist < obs.r + ball.r) {
+                if (dist < obs.r + ball.r + 5) {
                     let angle = Math.atan2(dy, dx);
-                    ball.vx = Math.cos(angle) * 12; 
-                    ball.vy = Math.sin(angle) * 12;
-                    ball.x += Math.cos(angle) * 5; 
-                    ball.y += Math.sin(angle) * 5;
+                    ball.vx = Math.cos(angle) * 15; 
+                    ball.vy = Math.sin(angle) * 15;
+                    ball.x += Math.cos(angle) * 8; 
+                    ball.y += Math.sin(angle) * 8;
                     
                     // Generar partículas en rebote
                     for(let i=0; i<15; i++) {
@@ -357,8 +389,16 @@
                     }
                 }
 
-                if (dist > 10) { 
+                // Fuerza eléctrica solo a distancia
+                if (dist > obs.r + ball.r + 10 && dist < 400) { 
+                    // Ley de Coulomb: F = k * q1 * q2 / r²
+                    // Mismo signo (+,+ o -,-) → F positiva → REPULSIÓN
+                    // Signo opuesto (+,- o -,+) → F negativa → ATRACCIÓN
                     let F = (K * ball.q * obs.q) / distSq;
+                    
+                    // dx/dy apuntan DESDE obstáculo HACIA bola
+                    // Si F > 0 (repulsión): empuja en dirección dx,dy (aleja)
+                    // Si F < 0 (atracción): empuja en dirección -dx,-dy (acerca)
                     fx += F * (dx / dist);
                     fy += F * (dy / dist);
                 }
@@ -366,26 +406,36 @@
 
             ball.vx += fx * DT;
             ball.vy += fy * DT;
+            
+            // Limitar velocidad máxima
+            let speed = Math.sqrt(ball.vx*ball.vx + ball.vy*ball.vy);
+            if(speed > 120) { // VELOCIDAD MÁXIMA BRUTAL
+                ball.vx = (ball.vx / speed) * 120;
+                ball.vy = (ball.vy / speed) * 120;
+            }
+            
             ball.vx *= FRICTION; 
             ball.vy *= FRICTION;
 
-            // Rastro de la bola
-            if(Math.random() < 0.3) {
+            // Rastro de la bola (pelotitas blancas tipo golf)
+            if(Math.random() < 0.2) {
                 particles.push({
                     x: ball.x,
                     y: ball.y,
                     vx: 0,
                     vy: 0,
-                    life: 20,
-                    maxLife: 20,
-                    color: ball.q > 0 ? '#ffff00' : '#00ffff',
-                    alpha: 0.6
+                    life: 15,
+                    maxLife: 15,
+                    color: '#ffffff',
+                    alpha: 0.8
                 });
             }
 
-            if (Math.abs(ball.vx) < 0.1 && Math.abs(ball.vy) < 0.1) {
-                ball.moving = false; 
-                debugDiv.innerText = "🟡 SISTEMA: BOLA DETENIDA";
+            if (Math.abs(ball.vx) < 0.05 && Math.abs(ball.vy) < 0.05) {
+                ball.moving = false;
+                ball.vx = 0;
+                ball.vy = 0;
+                debugDiv.innerText = "🟢 SISTEMA: BOLA DETENIDA - LISTA PARA DISPARAR";
             }
 
             ball.x += ball.vx * DT;
@@ -413,16 +463,19 @@
                 finalShots.innerText = stats.shots;
                 winMsg.style.display = 'block';
                 
-                // Explosión de victoria
-                for(let i=0; i<50; i++) {
+                // Generar nuevos obstáculos para el siguiente nivel
+                generateRandomObstacles();
+                
+                // Explosión de victoria tipo golf
+                for(let i=0; i<80; i++) {
                     particles.push({
                         x: hole.x,
                         y: hole.y,
-                        vx: (Math.random()-0.5)*15,
-                        vy: (Math.random()-0.5)*15,
-                        life: 60,
-                        maxLife: 60,
-                        color: ['#ffd700','#00ff00','#00ffff'][Math.floor(Math.random()*3)],
+                        vx: (Math.random()-0.5)*20,
+                        vy: (Math.random()-0.5)*20 - 5,
+                        life: 80,
+                        maxLife: 80,
+                        color: ['#ffd700','#ffffff','#ff0000'][Math.floor(Math.random()*3)],
                         alpha: 1
                     });
                 }
@@ -465,29 +518,49 @@
         });
         ctx.globalAlpha = 1;
 
-        // Hoyo mejorado
+        // Hoyo de golf realista
         ctx.save();
+        
+        // Sombra profunda del hoyo
         ctx.shadowColor = '#000';
-        ctx.shadowBlur = 20;
+        ctx.shadowBlur = 30;
+        ctx.shadowOffsetY = 5;
+        
+        // Hoyo negro profundo
         ctx.beginPath(); 
         ctx.arc(hole.x, hole.y, hole.r, 0, Math.PI*2);
         ctx.fillStyle = '#000'; 
         ctx.fill();
-        ctx.strokeStyle = '#ffd700'; 
-        ctx.lineWidth=4; 
+        
+        // Borde del césped del hoyo
+        ctx.strokeStyle = '#1a5f3a'; 
+        ctx.lineWidth = 8; 
         ctx.stroke();
+        
+        // Bandera dentro del hoyo
         ctx.restore();
         
-        // Texto META con brillo
-        ctx.save();
-        ctx.shadowColor = '#ffd700';
-        ctx.shadowBlur = 15;
-        ctx.fillStyle='#ffd700'; 
-        ctx.font="bold 16px Orbitron"; 
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText("META", hole.x, hole.y);
-        ctx.restore();
+        // Asta de la bandera
+        ctx.strokeStyle = '#888';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(hole.x, hole.y);
+        ctx.lineTo(hole.x, hole.y - 50);
+        ctx.stroke();
+        
+        // Bandera roja
+        ctx.fillStyle = '#ff0000';
+        ctx.beginPath();
+        ctx.moveTo(hole.x, hole.y - 50);
+        ctx.lineTo(hole.x + 25, hole.y - 40);
+        ctx.lineTo(hole.x, hole.y - 30);
+        ctx.closePath();
+        ctx.fill();
+        
+        // Borde de la bandera
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 1;
+        ctx.stroke();
 
         // Campos de fuerza y obstáculos
         obstacles.forEach(obs => {
@@ -515,73 +588,165 @@
             ctx.font="bold 24px Arial"; 
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
+            // Mostrar el signo y valor aproximado
+            let chargeVal = Math.abs(obs.q).toFixed(0);
             ctx.fillText(obs.q>0?"+":"−", obs.x, obs.y);
+            
+            // Mostrar valor de carga pequeño
+            ctx.font="bold 12px Arial";
+            ctx.fillText(chargeVal, obs.x, obs.y + 25);
         });
 
-        // Bola con efectos épicos
+        // Bola de golf realista
         ctx.save();
-        ctx.shadowColor = ball.q > 0 ? '#ffff00' : '#00ffff';
-        ctx.shadowBlur = 25;
         
-        // Halo exterior
-        ctx.beginPath(); 
-        ctx.arc(ball.x, ball.y, ball.r*2, 0, Math.PI*2);
-        ctx.fillStyle = ball.q > 0 ? 'rgba(255,255,0,0.2)' : 'rgba(0,255,255,0.2)';
-        ctx.fill();
+        // Sombra de la bola
+        ctx.shadowColor = 'rgba(0,0,0,0.5)';
+        ctx.shadowBlur = 10;
+        ctx.shadowOffsetX = 3;
+        ctx.shadowOffsetY = 3;
         
-        // Halo medio
-        ctx.beginPath(); 
-        ctx.arc(ball.x, ball.y, ball.r*1.5, 0, Math.PI*2);
-        ctx.fillStyle = ball.q > 0 ? 'rgba(255,255,0,0.4)' : 'rgba(0,255,255,0.4)';
-        ctx.fill();
+        // Color según carga: ROJO = positivo, AZUL = negativo
+        const ballColor = ball.q > 0 ? '#ff3333' : '#00ccff';
+        const glowColor = ball.q > 0 ? 'rgba(255,50,50,0.3)' : 'rgba(0,200,255,0.3)';
         
-        // Bola principal
+        // Aura eléctrica (más visible cuando se mueve)
+        if(ball.moving) {
+            ctx.shadowColor = ballColor;
+            ctx.shadowBlur = 25;
+            ctx.beginPath(); 
+            ctx.arc(ball.x, ball.y, ball.r*2, 0, Math.PI*2);
+            ctx.fillStyle = glowColor;
+            ctx.fill();
+        }
+        
+        // Bola principal (blanca con patrón de golf)
+        ctx.shadowBlur = 5;
         ctx.beginPath(); 
         ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2);
-        ctx.fillStyle = ball.q > 0 ? '#ffff00' : '#00ffff';
+        ctx.fillStyle = '#ffffff';
         ctx.fill();
-        ctx.strokeStyle = '#000'; 
-        ctx.lineWidth=2;
+        
+        // Patrón de hoyuelos de golf
+        ctx.fillStyle = '#e0e0e0';
+        for(let angle = 0; angle < Math.PI * 2; angle += Math.PI / 6) {
+            for(let radius = 3; radius < ball.r; radius += 4) {
+                const px = ball.x + Math.cos(angle) * radius;
+                const py = ball.y + Math.sin(angle) * radius;
+                ctx.beginPath();
+                ctx.arc(px, py, 0.8, 0, Math.PI*2);
+                ctx.fill();
+            }
+        }
+        
+        // Borde de la bola
+        ctx.strokeStyle = '#ccc'; 
+        ctx.lineWidth = 2;
+        ctx.beginPath(); 
+        ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2);
         ctx.stroke();
+        
+        // Indicador de carga en el centro
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = ballColor;
+        ctx.font = "bold 14px Arial";
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(ball.q > 0 ? "+" : "−", ball.x, ball.y);
+        
+        // Timer visual cuando está en movimiento
+        if(ball.moving) {
+            const elapsedTime = Date.now() - ball.shotStartTime;
+            const remainingTime = Math.max(0, SHOT_DURATION - elapsedTime);
+            const seconds = (remainingTime / 1000).toFixed(1);
+            
+            ctx.fillStyle = 'rgba(0,0,0,0.8)';
+            ctx.fillRect(ball.x - 25, ball.y + 20, 50, 18);
+            ctx.fillStyle = remainingTime < 2000 ? '#ff0000' : '#00ff00';
+            ctx.font = 'bold 12px Arial';
+            ctx.fillText(seconds + 's', ball.x, ball.y + 29);
+        }
+        
         ctx.restore();
 
-        // Flecha de Tiro mejorada
-        if (isDragging && !ball.moving) {
+        // Flecha de Tiro tipo golf con línea punteada
+        if (isDragging) {
             let dx = dragStart.x - dragCurrent.x;
             let dy = dragStart.y - dragCurrent.y;
             let dist = Math.sqrt(dx*dx + dy*dy);
             let power = Math.min(dist * POWER_SENSITIVITY, MAX_POWER);
             
-            ctx.save();
-            ctx.shadowColor = ball.q > 0 ? 'yellow' : 'cyan';
-            ctx.shadowBlur = 15;
+            const arrowColor = ball.q > 0 ? '#ff3333' : '#00ccff';
             
-            // Línea principal
+            ctx.save();
+            
+            // Línea punteada de trayectoria
+            ctx.setLineDash([10, 10]);
             ctx.beginPath();
             ctx.moveTo(ball.x, ball.y);
-            let aimX = ball.x + dx; 
-            let aimY = ball.y + dy;
+            let aimX = ball.x + dx * 2; 
+            let aimY = ball.y + dy * 2;
             ctx.lineTo(aimX, aimY);
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = arrowColor;
+            ctx.globalAlpha = 0.6;
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Flecha sólida dirección
+            ctx.globalAlpha = 1;
+            ctx.shadowColor = arrowColor;
+            ctx.shadowBlur = 10;
+            ctx.beginPath();
+            ctx.moveTo(ball.x, ball.y);
+            let shortX = ball.x + dx; 
+            let shortY = ball.y + dy;
+            ctx.lineTo(shortX, shortY);
             ctx.lineWidth = 6;
-            ctx.strokeStyle = ball.q > 0 ? '#ffff00' : '#00ffff';
+            ctx.strokeStyle = arrowColor;
             ctx.stroke();
             
             // Punta de flecha
             let angle = Math.atan2(dy, dx);
             ctx.beginPath();
-            ctx.moveTo(aimX, aimY);
-            ctx.lineTo(aimX - 20*Math.cos(angle-0.3), aimY - 20*Math.sin(angle-0.3));
-            ctx.lineTo(aimX - 20*Math.cos(angle+0.3), aimY - 20*Math.sin(angle+0.3));
+            ctx.moveTo(shortX, shortY);
+            ctx.lineTo(shortX - 20*Math.cos(angle-0.3), shortY - 20*Math.sin(angle-0.3));
+            ctx.lineTo(shortX - 20*Math.cos(angle+0.3), shortY - 20*Math.sin(angle+0.3));
             ctx.closePath();
-            ctx.fillStyle = ball.q > 0 ? '#ffff00' : '#00ffff';
+            ctx.fillStyle = arrowColor;
             ctx.fill();
-            ctx.restore();
             
-            // Medidor de potencia
-            ctx.fillStyle = 'rgba(0,0,0,0.7)';
-            ctx.fillRect(ball.x - 50, ball.y - 40, 100, 15);
-            ctx.fillStyle = power > MAX_POWER*0.7 ? '#ff0000' : '#00ff00';
-            ctx.fillRect(ball.x - 48, ball.y - 38, (power/MAX_POWER)*96, 11);
+            // Medidor de potencia estilo golf
+            const meterWidth = 120;
+            const meterHeight = 20;
+            const meterX = ball.x - meterWidth/2;
+            const meterY = ball.y - 50;
+            
+            // Fondo del medidor
+            ctx.fillStyle = 'rgba(0,0,0,0.8)';
+            ctx.fillRect(meterX, meterY, meterWidth, meterHeight);
+            
+            // Barra de potencia con gradiente
+            const powerPercent = power / MAX_POWER;
+            const gradient = ctx.createLinearGradient(meterX, 0, meterX + meterWidth, 0);
+            gradient.addColorStop(0, '#00ff00');
+            gradient.addColorStop(0.5, '#ffff00');
+            gradient.addColorStop(1, '#ff0000');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(meterX + 2, meterY + 2, (meterWidth - 4) * powerPercent, meterHeight - 4);
+            
+            // Borde del medidor
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(meterX, meterY, meterWidth, meterHeight);
+            
+            // Texto de potencia
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(`${Math.round(powerPercent * 100)}%`, ball.x, meterY - 8);
+            
+            ctx.restore();
         }
     }
 
@@ -593,8 +758,7 @@
 
     // --- EVENTOS MOUSE ---
     canvas.addEventListener('mousedown', e => {
-        if (ball.moving) return;
-        
+        // QUITAMOS LA RESTRICCIÓN - Ahora puedes disparar siempre
         const rect = canvas.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
@@ -636,12 +800,14 @@
         let angle = Math.atan2(dy, dx);
 
         if (dist > 10) {
-            ball.vx = Math.cos(angle) * power;
-            ball.vy = Math.sin(angle) * power;
+            // Sumar velocidad al disparo existente (no reemplazar)
+            ball.vx += Math.cos(angle) * power;
+            ball.vy += Math.sin(angle) * power;
             ball.moving = true;
+            ball.shotStartTime = Date.now(); // Registrar tiempo de disparo
             stats.shots++;
             statShots.innerText = stats.shots;
-            debugDiv.innerText = "🔴 SISTEMA: ¡DISPARO EJECUTADO!";
+            debugDiv.innerText = "🔴 SISTEMA: ¡DISPARO EJECUTADO! 💥";
         } else {
             debugDiv.innerText = "⚠️ SISTEMA: TIRO CANCELADO (MUY CORTO)";
         }
