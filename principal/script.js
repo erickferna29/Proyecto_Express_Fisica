@@ -13,6 +13,7 @@ const statShots = document.getElementById('statShots');
 const statWins = document.getElementById('statWins');
 const statBest = document.getElementById('statBest');
 const finalShots = document.getElementById('finalShots');
+const uiPanel = document.getElementById('ui');
 
 // Menú
 const startScreen = document.getElementById('startScreen');
@@ -652,6 +653,17 @@ function loop() {
 }
 
 // ===== EVENT LISTENERS =====
+
+// Ocultar panel de control
+btnToggleUI.addEventListener('click', () => {
+    if(uiPanel.style.display === 'none') {
+        uiPanel.style.display = 'block';
+        btnToggleUI.innerText = '✕'; // Cerrar
+    } else {
+        uiPanel.style.display = 'none';
+        btnToggleUI.innerText = '☰'; // Abrir
+    }
+});
 
 // Slider de carga
 sliderCarga.addEventListener('input', (e) => {
