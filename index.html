@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ELECTRO GOLF: Ultimate Web Sim</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #050505; font-family: 'Courier New', Courier, monospace; }
+        canvas { display: block; }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #00ffcc;
+            pointer-events: none;
+            text-shadow: 0 0 10px #00ffcc;
+        }
+        h1 { margin: 0; font-size: 24px; text-transform: uppercase; }
+        p { margin: 5px 0; font-size: 14px; color: #fff; }
+        .win-msg {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            color: #0f0;
+            font-size: 60px;
+            font-weight: bold;
+            text-shadow: 0 0 20px #0f0;
+            display: none;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ui">
+        <h1>⚡ Electro Golf Web ⚡</h1>
+        <p>Arrastra el mouse para disparar</p>
+        <p>Objetivo: Lleva la carga amarilla al hoyo verde</p>
+        <p>Obstáculos: Rojo (+) y Azul (-)</p>
+    </div>
+
+    <div id="winMsg" class="win-msg">¡HOYO EN UNO!<br><span style="font-size:30px">Presiona R para reiniciar</span></div>
+
+    <canvas id="gameCanvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Ajustar al tamaño de la pantalla
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    // --- CONFIGURACIÓN FÍSICA ---
+    const K = 20000; // Constante ajustada para pixels
+    const DT = 0.4;
+    
+    // OBSTÁCULOS (Posiciones relativas al centro)
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+
+    const obstacles = [
+        { x: cx - 100, y: cy - 100, q: 50, r: 30, color: '#ff0055' }, // Rojo (Repele)
+        { x: cx + 100, y: cy + 100, q: -40, r: 30, color: '#00ccff' }, // Azul (Atrae)
+        { x: cx + 200, y: cy - 150, q: 60, r: 40, color: '#ff0055' }  // Rojo Grande
+    ];
+
+    const hole = { x: cx + 300, y: cy, r: 40, color: '#00ff00' };
+
+    let ball = {
+        x: 100, y: cy,
+        vx: 0, vy: 0,
+        q: 10, r: 15,
+        moving: false,
+        trail: []
+    };
+
+    // Variables de Mouse
+    let isDragging = false;
+    let dragStart = { x: 0, y: 0 };
+    let dragCurrent = { x: 0, y: 0 };
+
+    // --- BUCLE PRINCIPAL ---
+    function update() {
+        if (ball.moving) {
+            let fx = 0;
+            let fy = 0;
+
+            // Superposición de Fuerzas
+            obstacles.forEach(obs => {
+                let dx = ball.x - obs.x;
+                let dy = ball.y - obs.y;
+                let distSq = dx*dx + dy*dy;
+                let dist = Math.sqrt(distSq);
+
+                if (dist < obs.r + ball.r) {
+                    // Choque simple
+                    ball.moving = false;
+                    resetBall();
+                }
+
+                if (dist > 5) { // Evitar división por cero
+                    // F = k * q1 * q2 / r^2
+                    let F = (K * ball.q * obs.q) / distSq;
+                    
+                    // Componentes
+                    fx += F * (dx / dist);
+                    fy += F * (dy / dist);
+                }
+            });
+
+            // Newton (F=ma) asumimos m=1
+            ball.vx += fx * DT;
+            ball.vy += fy * DT;
+
+            // Mover
+            ball.x += ball.vx * DT;
+            ball.y += ball.vy * DT;
+
+            // Guardar Rastro
+            if (ball.trail.length > 50) ball.trail.shift();
+            ball.trail.push({x: ball.x, y: ball.y});
+
+            // Checar Límites Pantalla
+            if (ball.x < 0 || ball.x > canvas.width || ball.y < 0 || ball.y > canvas.height) {
+                ball.moving = false;
+                setTimeout(resetBall, 1000);
+            }
+
+            // Checar Win
+            let dxH = ball.x - hole.x;
+            let dyH = ball.y - hole.y;
+            if (Math.sqrt(dxH*dxH + dyH*dyH) < hole.r) {
+                ball.moving = false;
+                document.getElementById('winMsg').style.display = 'block';
+            }
+        }
+    }
+
+    function draw() {
+        // Limpiar pantalla con efecto de rastro oscuro (Motion Blur)
+        ctx.fillStyle = 'rgba(5, 5, 5, 0.3)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Dibujar Hoyo (Con Glow)
+        drawGlowCircle(hole.x, hole.y, hole.r, hole.color);
+        ctx.fillStyle = "#000";
+        ctx.font = "bold 15px Arial";
+        ctx.fillText("META", hole.x - 20, hole.y + 5);
+
+        // Dibujar Obstáculos
+        obstacles.forEach(obs => {
+            drawGlowCircle(obs.x, obs.y, obs.r, obs.color);
+            ctx.fillStyle = "#fff";
+            ctx.fillText(obs.q > 0 ? "+" : "-", obs.x - 5, obs.y + 5);
+        });
+
+        // Dibujar Bola
+        drawGlowCircle(ball.x, ball.y, ball.r, 'yellow');
+
+        // Dibujar Rastro
+        ctx.beginPath();
+        ctx.strokeStyle = 'yellow';
+        ctx.lineWidth = 2;
+        for (let i = 0; i < ball.trail.length - 1; i++) {
+            ctx.moveTo(ball.trail[i].x, ball.trail[i].y);
+            ctx.lineTo(ball.trail[i+1].x, ball.trail[i+1].y);
+        }
+        ctx.stroke();
+
+        // Dibujar línea de tiro (Slingshot)
+        if (isDragging && !ball.moving) {
+            ctx.beginPath();
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 3;
+            ctx.moveTo(ball.x, ball.y);
+            // Invertimos la línea para que sea como resortera
+            let aimX = ball.x + (dragStart.x - dragCurrent.x);
+            let aimY = ball.y + (dragStart.y - dragCurrent.y);
+            ctx.lineTo(aimX, aimY);
+            ctx.stroke();
+            
+            // Texto de potencia
+            let power = Math.hypot(dragStart.x - dragCurrent.x, dragStart.y - dragCurrent.y);
+            ctx.fillStyle = "white";
+            ctx.fillText("Fuerza: " + Math.round(power), ball.x + 20, ball.y - 20);
+        }
+
+        requestAnimationFrame(loop);
+    }
+
+    function drawGlowCircle(x, y, r, color) {
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.shadowBlur = 20; // EL EFECTO NEÓN
+        ctx.shadowColor = color;
+        ctx.fill();
+        ctx.shadowBlur = 0; // Reset
+        ctx.closePath();
+    }
+
+    function loop() {
+        update();
+        draw();
+    }
+
+    function resetBall() {
+        ball.x = 100;
+        ball.y = cy;
+        ball.vx = 0;
+        ball.vy = 0;
+        ball.trail = [];
+        document.getElementById('winMsg').style.display = 'none';
+    }
+
+    // --- EVENTOS ---
+    canvas.addEventListener('mousedown', e => {
+        if (ball.moving) return;
+        isDragging = true;
+        dragStart = { x: e.clientX, y: e.clientY };
+        dragCurrent = { x: e.clientX, y: e.clientY };
+    });
+
+    canvas.addEventListener('mousemove', e => {
+        if (isDragging) {
+            dragCurrent = { x: e.clientX, y: e.clientY };
+        }
+    });
+
+    canvas.addEventListener('mouseup', e => {
+        if (!isDragging) return;
+        isDragging = false;
+        
+        // Calcular vector de lanzamiento
+        let dx = dragStart.x - e.clientX;
+        let dy = dragStart.y - e.clientY;
+        
+        ball.vx = dx * 0.15; // Factor de potencia
+        ball.vy = dy * 0.15;
+        ball.moving = true;
+    });
+
+    window.addEventListener('keydown', e => {
+        if (e.key === 'r' || e.key === 'R') resetBall();
+    });
+
+    // Iniciar
+    loop();
+
+</script>
+</body>
+</html>
