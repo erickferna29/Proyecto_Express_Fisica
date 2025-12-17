@@ -14,6 +14,11 @@ const statWins = document.getElementById('statWins');
 const statBest = document.getElementById('statBest');
 const finalShots = document.getElementById('finalShots');
 
+// Menú
+const startScreen = document.getElementById('startScreen');
+const btnStartGame = document.getElementById('btnStartGame');
+const btnBackMenu = document.getElementById('btnBackMenu');
+
 // Configurar canvas
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
@@ -37,10 +42,10 @@ const SHOT_DURATION = 5000; // Duración máxima del tiro (5 segundos)
 
 // ===== VARIABLES DEL JUEGO =====
 let particles = [];
+let gameActive = false; // Control del menú
 
 // POSICIONES RELATIVAS (en porcentajes del canvas)
 const BALL_START_X_PERCENT = 0.15; // 15% desde la izquierda
-const HOLE_X_PERCENT = 0.85; // 85% desde la izquierda
 
 // Función para calcular posiciones basadas en el tamaño del canvas
 function getGamePositions() {
@@ -48,19 +53,27 @@ function getGamePositions() {
         cx: canvas.width / 2,
         cy: canvas.height / 2,
         ballStartX: canvas.width * BALL_START_X_PERCENT,
-        ballStartY: canvas.height / 2,
-        holeX: canvas.width * HOLE_X_PERCENT,
-        holeY: canvas.height / 2
+        ballStartY: canvas.height / 2
+    };
+}
+
+// Función para generar posición aleatoria del hoyo
+function generateRandomHolePosition() {
+    const margin = 150; // Margen desde los bordes
+    return {
+        x: margin + Math.random() * (canvas.width - margin * 2),
+        y: margin + Math.random() * (canvas.height - margin * 2)
     };
 }
 
 // Inicializar posiciones
 let positions = getGamePositions();
 
-// Hoyo
+// Hoyo (posición inicial aleatoria)
+let holePos = generateRandomHolePosition();
 let hole = { 
-    x: positions.holeX, 
-    y: positions.holeY, 
+    x: holePos.x, 
+    y: holePos.y, 
     r: 25 
 };
 
@@ -106,9 +119,9 @@ function generateRandomObstacles() {
     
     for(let i = 0; i < particleTypes.length; i++) {
         const isPositive = particleTypes[i];
-        // Generar en el área central (entre la bola y el hoyo)
+        // Generar en el área central
         const minX = pos.ballStartX + 100;
-        const maxX = pos.holeX - 100;
+        const maxX = canvas.width - 100;
         const x = minX + Math.random() * (maxX - minX);
         const y = pos.cy + (Math.random() - 0.5) * (canvas.height * 0.6);
         
@@ -129,9 +142,12 @@ function updateLayoutOnResize() {
     // Recalcular todas las posiciones basadas en el nuevo tamaño
     positions = getGamePositions();
     
-    // Actualizar hoyo
-    hole.x = positions.holeX;
-    hole.y = positions.holeY;
+    // El hoyo mantiene su posición relativa
+    const relativeHoleX = hole.x / canvas.width;
+    const relativeHoleY = hole.y / canvas.height;
+    
+    hole.x = relativeHoleX * canvas.width;
+    hole.y = relativeHoleY * canvas.height;
     
     // Actualizar posición inicial de la bola
     ball.startX = positions.ballStartX;
@@ -176,6 +192,11 @@ function resetGame() {
     particles = [];
     stats.shots = 0;
     statShots.innerText = stats.shots;
+    
+    // Generar nueva posición aleatoria para el hoyo
+    const newHolePos = generateRandomHolePosition();
+    hole.x = newHolePos.x;
+    hole.y = newHolePos.y;
     
     generateRandomObstacles(); // Genera nivel nuevo
     
@@ -238,9 +259,6 @@ function update() {
             }
 
             // Fuerza eléctrica (Ley de Coulomb)
-            // F = K * q1 * q2 / r²
-            // Si q1 y q2 tienen el mismo signo (+,+ o -,-): F > 0 = REPULSIÓN
-            // Si q1 y q2 tienen signos opuestos (+,- o -,+): F < 0 = ATRACCIÓN
             if (dist > obs.r + ball.r + 10 && dist < 400) { 
                 let F = (K * ball.q * obs.q) / distSq;
                 fx += F * (dx / dist);
@@ -307,6 +325,11 @@ function update() {
             
             finalShots.innerText = stats.shots;
             winMsg.style.display = 'block';
+            
+            // Generar nueva posición aleatoria para el hoyo
+            const newHolePos = generateRandomHolePosition();
+            hole.x = newHolePos.x;
+            hole.y = newHolePos.y;
             
             // Generar nuevos obstáculos para siguiente nivel
             generateRandomObstacles(); 
@@ -630,7 +653,7 @@ function getInputCoords(e) {
 
 // Mouse/Touch Down
 function handleInputDown(e) {
-    if (!gameActive) return;
+    if (!gameActive) return; // Bloquear si no está jugando
     e.preventDefault();
     const coords = getInputCoords(e);
     
@@ -704,15 +727,7 @@ window.addEventListener('resize', () => {
     draw();
 });
 
-// ===== LÓGICA DE MENÚS (AGREGADO) =====
-
-// Referencias nuevas
-const startScreen = document.getElementById('startScreen');
-const btnStartGame = document.getElementById('btnStartGame');
-const btnBackMenu = document.getElementById('btnBackMenu');
-
-// Estado del juego (para bloquear controles en el menú)
-let gameActive = false;
+// ===== LÓGICA DE MENÚS =====
 
 // 1. INICIAR JUEGO (Botón Jugar)
 btnStartGame.addEventListener('click', () => {
@@ -734,21 +749,6 @@ btnBackMenu.addEventListener('click', () => {
     gameActive = false; // Desactivar controles
 });
 
-// 3. MODIFICAR EVENTOS DE INPUT EXISTENTES
-// IMPORTANTE: Busca tus funciones 'handleInputDown' y AGREGA ESTA LÍNEA AL PRINCIPIO:
-/*
-function handleInputDown(e) {
-    if (!gameActive) return; // <--- AGREGA ESTO: Bloquea si no estás jugando
-    e.preventDefault();
-    // ... resto de tu código ...
-}
-*/
-
-// Truco rápido para inyectar la protección sin borrar tu código:
-// Sobrescribimos el listener original envolviéndolo en una validación
-const canvasOriginal = canvas.cloneNode(true);
-// (Nota: No es necesario complicarse, solo asegúrate de que cuando copies esto,
-// vayas a tu función handleInputDown existente y le pongas 'if (!gameActive) return;' al inicio)
 // ===== INICIAR JUEGO =====
 generateRandomObstacles();
 loop();
