@@ -468,3 +468,82 @@ input[type=range]::-moz-range-track {
         -webkit-tap-highlight-color: rgba(0,255,255,0.3);
     }
 }
+/* ===== PANTALLA DE INICIO ===== */
+.overlay-screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(5, 20, 10, 0.95); /* Fondo oscuro semitransparente */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 200; /* Por encima de todo */
+    backdrop-filter: blur(5px);
+}
+
+.game-title {
+    font-size: 60px;
+    color: #00ffff;
+    text-shadow: 0 0 20px #00ffff, 0 0 40px #00ccff;
+    margin-bottom: 10px;
+    text-align: center;
+    letter-spacing: 5px;
+}
+
+.game-subtitle {
+    font-size: 18px;
+    color: #ffd700;
+    margin-bottom: 50px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.big-neon-btn {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 24px;
+    padding: 20px 60px;
+    background: transparent;
+    color: #00ffff;
+    border: 3px solid #00ffff;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    font-weight: 900;
+}
+
+.big-neon-btn:hover {
+    background: #00ffff;
+    color: #000;
+    box-shadow: 0 0 50px #00ffff;
+    transform: scale(1.1);
+}
+
+/* Ajustes para botones en Pantalla de Victoria */
+.win-buttons {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin-top: 30px;
+}
+
+.secondary-btn {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 18px;
+    padding: 12px 30px;
+    background: transparent;
+    color: #fff;
+    border: 2px solid #fff;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.secondary-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 0 15px white;
+}

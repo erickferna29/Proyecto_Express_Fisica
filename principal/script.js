@@ -630,6 +630,7 @@ function getInputCoords(e) {
 
 // Mouse/Touch Down
 function handleInputDown(e) {
+    if (!gameActive) return;
     e.preventDefault();
     const coords = getInputCoords(e);
     
@@ -703,6 +704,51 @@ window.addEventListener('resize', () => {
     draw();
 });
 
+// ===== LÓGICA DE MENÚS (AGREGADO) =====
+
+// Referencias nuevas
+const startScreen = document.getElementById('startScreen');
+const btnStartGame = document.getElementById('btnStartGame');
+const btnBackMenu = document.getElementById('btnBackMenu');
+
+// Estado del juego (para bloquear controles en el menú)
+let gameActive = false;
+
+// 1. INICIAR JUEGO (Botón Jugar)
+btnStartGame.addEventListener('click', () => {
+    startScreen.style.display = 'none'; // Ocultar menú
+    gameActive = true; // Activar controles
+    resetGame(); // Iniciar limpio
+    
+    // Reiniciar estadísticas globales al empezar juego nuevo
+    stats.wins = 0;
+    statWins.innerText = "0";
+    stats.bestScore = null;
+    statBest.innerText = "--";
+});
+
+// 2. VOLVER AL MENÚ (Desde Victoria)
+btnBackMenu.addEventListener('click', () => {
+    winMsg.style.display = 'none'; // Ocultar victoria
+    startScreen.style.display = 'flex'; // Mostrar menú inicio
+    gameActive = false; // Desactivar controles
+});
+
+// 3. MODIFICAR EVENTOS DE INPUT EXISTENTES
+// IMPORTANTE: Busca tus funciones 'handleInputDown' y AGREGA ESTA LÍNEA AL PRINCIPIO:
+/*
+function handleInputDown(e) {
+    if (!gameActive) return; // <--- AGREGA ESTO: Bloquea si no estás jugando
+    e.preventDefault();
+    // ... resto de tu código ...
+}
+*/
+
+// Truco rápido para inyectar la protección sin borrar tu código:
+// Sobrescribimos el listener original envolviéndolo en una validación
+const canvasOriginal = canvas.cloneNode(true);
+// (Nota: No es necesario complicarse, solo asegúrate de que cuando copies esto,
+// vayas a tu función handleInputDown existente y le pongas 'if (!gameActive) return;' al inicio)
 // ===== INICIAR JUEGO =====
 generateRandomObstacles();
 loop();

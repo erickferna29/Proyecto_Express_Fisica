@@ -7,6 +7,11 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <div id="startScreen" class="overlay-screen">
+        <h1 class="game-title">ELECTRO GOLF</h1>
+        <div class="game-subtitle">SIMULADOR DE CAMPO ELÉCTRICO</div>
+        <button id="btnStartGame" class="big-neon-btn">JUGAR AHORA</button>
+    </div>
     <!-- UI Panel -->
     <div id="ui">
         <h2>⚡ CONTROL</h2>
@@ -45,11 +50,13 @@
     <!-- Debug Info -->
     <div id="debug">🟢 SISTEMA: LISTO</div>
 
-    <!-- Win Message -->
-    <div id="winMsg" class="win-msg">
+<div id="winMsg" class="win-msg">
         🏆 ¡VICTORIA! 🏆<br>
         <div class="win-shots">Tiros: <span id="finalShots">0</span></div>
-        <button id="btnWinReset">▶️ SIGUIENTE</button>
+        <div class="win-buttons">
+            <button id="btnWinReset">SIGUIENTE NIVEL ▶️</button>
+            <button id="btnBackMenu" class="secondary-btn">🏠 MENÚ</button>
+        </div>
     </div>
 
     <!-- Game Canvas -->
