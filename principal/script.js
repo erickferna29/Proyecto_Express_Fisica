@@ -40,6 +40,10 @@ const MAX_POWER = 1200; // Potencia máxima
 const POWER_SENSITIVITY = 12.0; // Sensibilidad del arrastre
 const SHOT_DURATION = 5000; // Duración máxima del tiro (5 segundos)
 
+// === VARIABLES DE ANIMACIÓN ===
+// Ya no usamos delay fijo para evitar el lag visual
+let lastAnimTime = 0;
+
 // ===== VARIABLES DEL JUEGO =====
 let particles = [];
 let gameActive = false; // Control del menú
@@ -125,9 +129,15 @@ function generateRandomObstacles() {
         const x = minX + Math.random() * (maxX - minX);
         const y = pos.cy + (Math.random() - 0.5) * (canvas.height * 0.6);
         
+        // Guardamos x, y ADEMÁS de baseX, baseY
+        const finalX = Math.max(200, Math.min(canvas.width - 200, x));
+        const finalY = Math.max(100, Math.min(canvas.height - 100, y));
+
         obstacles.push({
-            x: Math.max(200, Math.min(canvas.width - 200, x)),
-            y: Math.max(100, Math.min(canvas.height - 100, y)),
+            x: finalX,
+            y: finalY,
+            baseX: finalX, // Guardamos la posición original para que no se pierda al vibrar
+            baseY: finalY, // Guardamos la posición original
             q: isPositive ? (20 + Math.random() * 30) : -(20 + Math.random() * 30),
             r: 30 + Math.random() * 15,
             color: isPositive ? '#ff3333' : '#00ccff'
@@ -161,16 +171,20 @@ function updateLayoutOnResize() {
     
     // Reposicionar obstáculos proporcionalmente
     obstacles.forEach(obs => {
-        // Mantener la posición relativa del obstáculo
-        const relativeX = obs.x / canvas.width;
-        const relativeY = obs.y / canvas.height;
+        // Usamos baseX en lugar de x para el cálculo relativo, para evitar drift
+        const relativeX = (obs.baseX || obs.x) / canvas.width;
+        const relativeY = (obs.baseY || obs.y) / canvas.height;
         
-        obs.x = relativeX * canvas.width;
-        obs.y = relativeY * canvas.height;
+        obs.baseX = relativeX * canvas.width;
+        obs.baseY = relativeY * canvas.height;
         
         // Asegurar que estén dentro de límites
-        obs.x = Math.max(100, Math.min(canvas.width - 100, obs.x));
-        obs.y = Math.max(80, Math.min(canvas.height - 80, obs.y));
+        obs.baseX = Math.max(100, Math.min(canvas.width - 100, obs.baseX));
+        obs.baseY = Math.max(80, Math.min(canvas.height - 80, obs.baseY));
+
+        // Actualizamos la posición visual actual
+        obs.x = obs.baseX;
+        obs.y = obs.baseY;
     });
 }
 
@@ -208,6 +222,22 @@ function resetGame() {
  * Actualiza la física del juego
  */
 function update() {
+    // === ANIMACIÓN FLUIDA DE OBSTÁCULOS (SIN LAG) ===
+    // Usamos el tiempo y funciones matemáticas para un movimiento suave
+    const time = Date.now() * 0.003; // Velocidad de la animación
+    
+    obstacles.forEach((obs, index) => {
+        // Math.sin crea un movimiento de onda suave
+        // 'index' hace que cada bola se mueva a destiempo (desfase)
+        const offsetX = Math.sin(time + index) * 4; // 4px a los lados
+        const offsetY = Math.cos(time + index * 0.7) * 4; // 4px arriba/abajo
+        
+        // Aplicamos el movimiento sobre la posición base
+        obs.x = obs.baseX + offsetX;
+        obs.y = obs.baseY + offsetY;
+    });
+    // ===============================================
+
     // Actualizar partículas
     particles = particles.filter(p => {
         p.life--;
