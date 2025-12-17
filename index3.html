@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ELECTRO GOLF: ULTIMATE</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        
+        body { 
+            margin: 0; overflow: hidden; 
+            background: linear-gradient(135deg, #0a2f1f 0%, #1a472a 50%, #0f3520 100%);
+            font-family: 'Orbitron', 'Segoe UI', sans-serif; 
+            user-select: none; 
+        }
+        canvas { display: block; }
+        
+        /* UI PANEL MEJORADO */
+        #ui {
+            position: absolute; top: 20px; left: 20px; width: 240px;
+            color: #fff; 
+            background: linear-gradient(145deg, rgba(0,0,0,0.85), rgba(20,20,50,0.9)); 
+            padding: 25px; border-radius: 20px; 
+            border: 3px solid #00ffff;
+            box-shadow: 0 0 30px rgba(0,255,255,0.5), inset 0 0 20px rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+        }
+        
+        h2 { 
+            margin: 0 0 15px 0; 
+            color: #00ffff; 
+            font-size: 24px; 
+            text-align: center; 
+            text-transform: uppercase; 
+            text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff;
+            letter-spacing: 2px;
+        }
+        
+        /* CONTROLES */
+        .control-group { 
+            margin-bottom: 20px; 
+            background: rgba(0,0,0,0.3); 
+            padding: 12px; 
+            border-radius: 10px;
+            border: 1px solid rgba(0,255,255,0.3);
+        }
+        label { 
+            display: block; 
+            font-weight: bold; 
+            margin-bottom: 8px; 
+            font-size: 14px; 
+            color: #00ffff;
+            text-shadow: 0 0 5px rgba(0,255,255,0.5);
+        }
+        
+        /* SLIDER ÉPICO */
+        input[type=range] { 
+            width: 100%; 
+            cursor: pointer; 
+            height: 8px;
+            background: linear-gradient(90deg, #00ccff 0%, #ffff00 50%, #ff3333 100%);
+            border-radius: 5px;
+            outline: none;
+            opacity: 0.9;
+            transition: opacity 0.2s;
+        }
+        input[type=range]:hover { opacity: 1; }
+        
+        /* BOTÓN REINTENTAR MEJORADO */
+        #btnReset {
+            width: 100%; padding: 12px; 
+            background: linear-gradient(145deg, #ff3333, #cc0000);
+            color: white;
+            border: 2px solid #ff6666; 
+            border-radius: 10px; 
+            font-weight: 900; 
+            font-size: 16px;
+            cursor: pointer; 
+            text-transform: uppercase; 
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(255,0,0,0.4);
+            text-shadow: 0 0 5px rgba(0,0,0,0.5);
+        }
+        #btnReset:hover { 
+            background: linear-gradient(145deg, #ff0000, #990000);
+            transform: translateY(-2px); 
+            box-shadow: 0 7px 20px rgba(255,0,0,0.6);
+        }
+        #btnReset:active { 
+            transform: translateY(1px); 
+            box-shadow: 0 3px 10px rgba(255,0,0,0.4);
+        }
+
+        /* MENSAJES MEJORADOS */
+        #debug { 
+            position: absolute; 
+            bottom: 15px; 
+            left: 15px; 
+            color: #00ff00; 
+            font-family: 'Orbitron', monospace; 
+            font-size: 14px; 
+            pointer-events: none; 
+            text-shadow: 0 0 10px #00ff00;
+            background: rgba(0,0,0,0.7);
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 1px solid #00ff00;
+        }
+        
+        .win-msg {
+            position: absolute; 
+            top: 50%; 
+            left: 50%; 
+            transform: translate(-50%, -50%);
+            color: #ffd700; 
+            font-size: 80px; 
+            font-weight: 900; 
+            text-shadow: 0 0 20px #ffd700, 0 0 40px #ffd700, 4px 4px 0 #000;
+            display: none; 
+            text-align: center; 
+            background: linear-gradient(145deg, rgba(0,0,0,0.95), rgba(20,20,50,0.95));
+            padding: 50px; 
+            border-radius: 25px; 
+            border: 5px solid #ffd700; 
+            z-index: 100;
+            animation: pulse 1s infinite;
+            box-shadow: 0 0 50px rgba(255,215,0,0.8);
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.05); }
+        }
+        
+        /* ESTADÍSTICAS */
+        #stats {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(145deg, rgba(0,0,0,0.85), rgba(20,20,50,0.9));
+            padding: 20px;
+            border-radius: 15px;
+            border: 2px solid #ffd700;
+            color: #ffd700;
+            font-family: 'Orbitron', sans-serif;
+            box-shadow: 0 0 20px rgba(255,215,0,0.5);
+            text-shadow: 0 0 5px rgba(255,215,0,0.5);
+        }
+        
+        .stat-item {
+            margin: 8px 0;
+            font-size: 16px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ui">
+        <h2>⚡ CONTROL ELÉCTRICO</h2>
+        
+        <div class="control-group">
+            <label>🔋 CARGA: <span id="valCarga" style="color:#ffff00; font-size:18px;">+10</span> µC</label>
+            <input type="range" id="sliderCarga" min="-20" max="20" value="10" step="1">
+            <div style="font-size:11px; color:#00ffff; text-align:center; margin-top:5px;">
+                ⚡ Positivo = Repele Rojo | Negativo = Atrae Rojo
+            </div>
+        </div>
+
+        <button id="btnReset">🔄 RESET NIVEL</button>
+        
+        <div style="margin-top:20px; font-size:12px; border-top:2px solid rgba(0,255,255,0.3); padding-top:15px; color:#00ffff;">
+            <div style="text-align:center; margin-bottom:10px; font-weight:bold; font-size:14px;">📋 INSTRUCCIONES</div>
+            <div style="line-height:1.6;">
+            🎯 Click en la bola<br>
+            🖱️ Arrastra para apuntar<br>
+            🚀 Suelta para disparar<br>
+            ⌨️ Presiona <span style="color:#ffd700; font-weight:bold;">R</span> para reiniciar
+            </div>
+        </div>
+    </div>
+
+    <div id="stats">
+        <div style="text-align:center; font-size:18px; margin-bottom:10px; border-bottom: 2px solid #ffd700; padding-bottom:8px;">📊 ESTADÍSTICAS</div>
+        <div class="stat-item">🎯 Tiros: <span id="statShots">0</span></div>
+        <div class="stat-item">🏆 Victorias: <span id="statWins">0</span></div>
+        <div class="stat-item">⚡ Mejor: <span id="statBest">--</span></div>
+    </div>
+
+    <div id="debug">🟢 SISTEMA: LISTO PARA DISPARAR</div>
+    <div id="winMsg" class="win-msg">
+        🏆 ¡VICTORIA! 🏆<br>
+        <div style="font-size:30px; margin-top:20px;">Tiros: <span id="finalShots" style="color:#00ff00;">0</span></div>
+        <button id="btnWinReset" style="font-size:22px; padding:15px 40px; margin-top:30px; cursor:pointer; background: linear-gradient(145deg, #00ff00, #00cc00); border:3px solid #00ff00; border-radius:15px; font-weight:900; box-shadow: 0 0 20px rgba(0,255,0,0.6); transition: 0.3s;">▶️ SIGUIENTE NIVEL</button>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const debugDiv = document.getElementById('debug');
+    
+    // UI Elements
+    const sliderCarga = document.getElementById('sliderCarga');
+    const valCarga = document.getElementById('valCarga');
+    const btnReset = document.getElementById('btnReset');
+    const btnWinReset = document.getElementById('btnWinReset');
+    const winMsg = document.getElementById('winMsg');
+    const statShots = document.getElementById('statShots');
+    const statWins = document.getElementById('statWins');
+    const statBest = document.getElementById('statBest');
+    const finalShots = document.getElementById('finalShots');
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    // --- ESTADÍSTICAS ---
+    let stats = {
+        shots: 0,
+        wins: 0,
+        bestScore: null
+    };
+
+    // --- FÍSICA ---
+    const K = 25000;     
+    const DT = 0.5;      
+    const FRICTION = 0.96; 
+    const MAX_POWER = 35; 
+    const POWER_SENSITIVITY = 0.25;
+    
+    // Partículas
+    let particles = [];
+
+    // Mapa - Inicialización básica
+    let cx = canvas.width / 2;
+    let cy = canvas.height / 2;
+    let hole = { x: canvas.width * 0.85, y: cy, r: 25 };
+    
+    // Obstáculos (Fijos)
+    let obstacles = [
+        { x: cx - 150, y: cy - 100, q: 60, r: 40, color: '#ff3333' }, 
+        { x: cx + 150, y: cy + 100, q: -50, r: 40, color: '#00ccff' }, 
+        { x: cx, y: cy - 200, q: 80, r: 50, color: '#ff3333' }       
+    ];
+
+    // Bola
+    let ball = { 
+        startX: 150, startY: cy,
+        x: 150, y: cy, 
+        vx: 0, vy: 0, 
+        q: 10, r: 12, 
+        moving: false 
+    };
+    
+    // Función para reposicionar elementos al cambiar tamaño
+    function repositionElements() {
+        cx = canvas.width / 2;
+        cy = canvas.height / 2;
+        hole.x = canvas.width * 0.85;
+        hole.y = cy;
+        
+        obstacles[0].x = cx - 150;
+        obstacles[0].y = cy - 100;
+        obstacles[1].x = cx + 150;
+        obstacles[1].y = cy + 100;
+        obstacles[2].x = cx;
+        obstacles[2].y = cy - 200;
+        
+        if(!ball.moving) {
+            ball.startY = cy;
+            ball.y = cy;
+        }
+    }
+
+    // Mouse
+    let isDragging = false;
+    let dragStart = { x: 0, y: 0 };
+    let dragCurrent = { x: 0, y: 0 };
+
+    // --- FUNCIONES UI ---
+    
+    // Actualizar carga desde el slider
+    sliderCarga.addEventListener('input', (e) => {
+        let val = parseInt(e.target.value);
+        ball.q = val;
+        
+        // Actualizar texto y color
+        valCarga.innerText = (val > 0 ? "+" : "") + val;
+        valCarga.style.color = val > 0 ? "#ffff00" : "#00ccff"; // Amarillo o Azul
+        
+        // Resetear visualmente si no se mueve
+        if(!ball.moving) {
+            draw();
+        }
+    });
+
+    // Función Reset
+    function resetGame() {
+        ball.x = ball.startX;
+        ball.y = ball.startY;
+        ball.vx = 0;
+        ball.vy = 0;
+        ball.moving = false;
+        winMsg.style.display = 'none';
+        particles = [];
+        stats.shots = 0;
+        statShots.innerText = stats.shots;
+        debugDiv.innerText = "🟢 SISTEMA: NIVEL REINICIADO";
+        draw();
+    }
+
+    btnReset.addEventListener('click', resetGame);
+    btnWinReset.addEventListener('click', resetGame);
+
+    // --- GAME LOOP ---
+    function update() {
+        // Actualizar partículas
+        particles = particles.filter(p => {
+            p.life--;
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.2; // Gravedad
+            p.alpha = p.life / p.maxLife;
+            return p.life > 0;
+        });
+
+        if (ball.moving) {
+            let fx = 0, fy = 0;
+
+            obstacles.forEach(obs => {
+                let dx = ball.x - obs.x;
+                let dy = ball.y - obs.y;
+                let distSq = dx*dx + dy*dy;
+                let dist = Math.sqrt(distSq);
+
+                // Rebote Obstáculos con efectos
+                if (dist < obs.r + ball.r) {
+                    let angle = Math.atan2(dy, dx);
+                    ball.vx = Math.cos(angle) * 12; 
+                    ball.vy = Math.sin(angle) * 12;
+                    ball.x += Math.cos(angle) * 5; 
+                    ball.y += Math.sin(angle) * 5;
+                    
+                    // Generar partículas en rebote
+                    for(let i=0; i<15; i++) {
+                        particles.push({
+                            x: ball.x,
+                            y: ball.y,
+                            vx: (Math.random()-0.5)*8,
+                            vy: (Math.random()-0.5)*8,
+                            life: 30,
+                            maxLife: 30,
+                            color: obs.color,
+                            alpha: 1
+                        });
+                    }
+                }
+
+                if (dist > 10) { 
+                    let F = (K * ball.q * obs.q) / distSq;
+                    fx += F * (dx / dist);
+                    fy += F * (dy / dist);
+                }
+            });
+
+            ball.vx += fx * DT;
+            ball.vy += fy * DT;
+            ball.vx *= FRICTION; 
+            ball.vy *= FRICTION;
+
+            // Rastro de la bola
+            if(Math.random() < 0.3) {
+                particles.push({
+                    x: ball.x,
+                    y: ball.y,
+                    vx: 0,
+                    vy: 0,
+                    life: 20,
+                    maxLife: 20,
+                    color: ball.q > 0 ? '#ffff00' : '#00ffff',
+                    alpha: 0.6
+                });
+            }
+
+            if (Math.abs(ball.vx) < 0.1 && Math.abs(ball.vy) < 0.1) {
+                ball.moving = false; 
+                debugDiv.innerText = "🟡 SISTEMA: BOLA DETENIDA";
+            }
+
+            ball.x += ball.vx * DT;
+            ball.y += ball.vy * DT;
+
+            // Paredes
+            if (ball.x < 0 || ball.x > canvas.width) ball.vx *= -0.8;
+            if (ball.y < 0 || ball.y > canvas.height) ball.vy *= -0.8;
+            ball.x = Math.max(ball.r, Math.min(canvas.width - ball.r, ball.x));
+            ball.y = Math.max(ball.r, Math.min(canvas.height - ball.r, ball.y));
+
+            // Win Condition
+            let dxH = ball.x - hole.x;
+            let dyH = ball.y - hole.y;
+            if (Math.sqrt(dxH*dxH + dyH*dyH) < hole.r) {
+                ball.moving = false;
+                stats.wins++;
+                statWins.innerText = stats.wins;
+                
+                if(stats.bestScore === null || stats.shots < stats.bestScore) {
+                    stats.bestScore = stats.shots;
+                    statBest.innerText = stats.bestScore;
+                }
+                
+                finalShots.innerText = stats.shots;
+                winMsg.style.display = 'block';
+                
+                // Explosión de victoria
+                for(let i=0; i<50; i++) {
+                    particles.push({
+                        x: hole.x,
+                        y: hole.y,
+                        vx: (Math.random()-0.5)*15,
+                        vy: (Math.random()-0.5)*15,
+                        life: 60,
+                        maxLife: 60,
+                        color: ['#ffd700','#00ff00','#00ffff'][Math.floor(Math.random()*3)],
+                        alpha: 1
+                    });
+                }
+            }
+        }
+    }
+
+    function draw() {
+        // Fondo degradado animado
+        const gradient = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 0, canvas.width/2, canvas.height/2, canvas.width);
+        gradient.addColorStop(0, '#1a5f3a');
+        gradient.addColorStop(0.5, '#2e8b57');
+        gradient.addColorStop(1, '#0f3520');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Cuadricula brillante
+        ctx.strokeStyle = 'rgba(0,255,255,0.15)';
+        ctx.lineWidth = 1;
+        for(let i=0; i<canvas.width; i+=50) { 
+            ctx.beginPath(); 
+            ctx.moveTo(i,0); 
+            ctx.lineTo(i,canvas.height); 
+            ctx.stroke(); 
+        }
+        for(let i=0; i<canvas.height; i+=50) { 
+            ctx.beginPath(); 
+            ctx.moveTo(0,i); 
+            ctx.lineTo(canvas.width,i); 
+            ctx.stroke(); 
+        }
+
+        // Partículas
+        particles.forEach(p => {
+            ctx.globalAlpha = p.alpha * 0.8;
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 3, 0, Math.PI*2);
+            ctx.fill();
+        });
+        ctx.globalAlpha = 1;
+
+        // Hoyo mejorado
+        ctx.save();
+        ctx.shadowColor = '#000';
+        ctx.shadowBlur = 20;
+        ctx.beginPath(); 
+        ctx.arc(hole.x, hole.y, hole.r, 0, Math.PI*2);
+        ctx.fillStyle = '#000'; 
+        ctx.fill();
+        ctx.strokeStyle = '#ffd700'; 
+        ctx.lineWidth=4; 
+        ctx.stroke();
+        ctx.restore();
+        
+        // Texto META con brillo
+        ctx.save();
+        ctx.shadowColor = '#ffd700';
+        ctx.shadowBlur = 15;
+        ctx.fillStyle='#ffd700'; 
+        ctx.font="bold 16px Orbitron"; 
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText("META", hole.x, hole.y);
+        ctx.restore();
+
+        // Campos de fuerza y obstáculos
+        obstacles.forEach(obs => {
+            // Campo de fuerza
+            ctx.beginPath();
+            ctx.arc(obs.x, obs.y, obs.r*2, 0, Math.PI*2);
+            ctx.fillStyle = obs.color === '#ff3333' ? 'rgba(255,50,50,0.2)' : 'rgba(0,200,255,0.2)';
+            ctx.fill();
+            
+            // Obstáculo con brillo
+            ctx.save();
+            ctx.shadowColor = obs.color;
+            ctx.shadowBlur = 20;
+            ctx.beginPath(); 
+            ctx.arc(obs.x, obs.y, obs.r, 0, Math.PI*2);
+            ctx.fillStyle = obs.color; 
+            ctx.fill();
+            ctx.strokeStyle = '#000'; 
+            ctx.lineWidth=2;
+            ctx.stroke();
+            ctx.restore();
+            
+            // Símbolo de carga
+            ctx.fillStyle = '#fff'; 
+            ctx.font="bold 24px Arial"; 
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(obs.q>0?"+":"−", obs.x, obs.y);
+        });
+
+        // Bola con efectos épicos
+        ctx.save();
+        ctx.shadowColor = ball.q > 0 ? '#ffff00' : '#00ffff';
+        ctx.shadowBlur = 25;
+        
+        // Halo exterior
+        ctx.beginPath(); 
+        ctx.arc(ball.x, ball.y, ball.r*2, 0, Math.PI*2);
+        ctx.fillStyle = ball.q > 0 ? 'rgba(255,255,0,0.2)' : 'rgba(0,255,255,0.2)';
+        ctx.fill();
+        
+        // Halo medio
+        ctx.beginPath(); 
+        ctx.arc(ball.x, ball.y, ball.r*1.5, 0, Math.PI*2);
+        ctx.fillStyle = ball.q > 0 ? 'rgba(255,255,0,0.4)' : 'rgba(0,255,255,0.4)';
+        ctx.fill();
+        
+        // Bola principal
+        ctx.beginPath(); 
+        ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2);
+        ctx.fillStyle = ball.q > 0 ? '#ffff00' : '#00ffff';
+        ctx.fill();
+        ctx.strokeStyle = '#000'; 
+        ctx.lineWidth=2;
+        ctx.stroke();
+        ctx.restore();
+
+        // Flecha de Tiro mejorada
+        if (isDragging && !ball.moving) {
+            let dx = dragStart.x - dragCurrent.x;
+            let dy = dragStart.y - dragCurrent.y;
+            let dist = Math.sqrt(dx*dx + dy*dy);
+            let power = Math.min(dist * POWER_SENSITIVITY, MAX_POWER);
+            
+            ctx.save();
+            ctx.shadowColor = ball.q > 0 ? 'yellow' : 'cyan';
+            ctx.shadowBlur = 15;
+            
+            // Línea principal
+            ctx.beginPath();
+            ctx.moveTo(ball.x, ball.y);
+            let aimX = ball.x + dx; 
+            let aimY = ball.y + dy;
+            ctx.lineTo(aimX, aimY);
+            ctx.lineWidth = 6;
+            ctx.strokeStyle = ball.q > 0 ? '#ffff00' : '#00ffff';
+            ctx.stroke();
+            
+            // Punta de flecha
+            let angle = Math.atan2(dy, dx);
+            ctx.beginPath();
+            ctx.moveTo(aimX, aimY);
+            ctx.lineTo(aimX - 20*Math.cos(angle-0.3), aimY - 20*Math.sin(angle-0.3));
+            ctx.lineTo(aimX - 20*Math.cos(angle+0.3), aimY - 20*Math.sin(angle+0.3));
+            ctx.closePath();
+            ctx.fillStyle = ball.q > 0 ? '#ffff00' : '#00ffff';
+            ctx.fill();
+            ctx.restore();
+            
+            // Medidor de potencia
+            ctx.fillStyle = 'rgba(0,0,0,0.7)';
+            ctx.fillRect(ball.x - 50, ball.y - 40, 100, 15);
+            ctx.fillStyle = power > MAX_POWER*0.7 ? '#ff0000' : '#00ff00';
+            ctx.fillRect(ball.x - 48, ball.y - 38, (power/MAX_POWER)*96, 11);
+        }
+    }
+
+    function loop() { 
+        update(); 
+        draw(); 
+        requestAnimationFrame(loop);
+    }
+
+    // --- EVENTOS MOUSE ---
+    canvas.addEventListener('mousedown', e => {
+        if (ball.moving) return;
+        
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        
+        let dx = mouseX - ball.x;
+        let dy = mouseY - ball.y;
+        
+        // Detectar click en bola (o cerca)
+        if (Math.sqrt(dx*dx + dy*dy) < 80) { 
+            isDragging = true;
+            dragStart = { x: mouseX, y: mouseY };
+            dragCurrent = { x: mouseX, y: mouseY };
+            debugDiv.innerText = "🔵 SISTEMA: APUNTANDO... ARRASTRA Y SUELTA";
+        }
+    });
+
+    canvas.addEventListener('mousemove', e => {
+        if (isDragging) {
+            const rect = canvas.getBoundingClientRect();
+            dragCurrent = { 
+                x: e.clientX - rect.left, 
+                y: e.clientY - rect.top 
+            };
+        }
+    });
+
+    canvas.addEventListener('mouseup', e => {
+        if (!isDragging) return;
+        isDragging = false;
+        
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        
+        let dx = dragStart.x - mouseX;
+        let dy = dragStart.y - mouseY;
+        let dist = Math.sqrt(dx*dx + dy*dy);
+        let power = Math.min(dist * POWER_SENSITIVITY, MAX_POWER);
+        let angle = Math.atan2(dy, dx);
+
+        if (dist > 10) {
+            ball.vx = Math.cos(angle) * power;
+            ball.vy = Math.sin(angle) * power;
+            ball.moving = true;
+            stats.shots++;
+            statShots.innerText = stats.shots;
+            debugDiv.innerText = "🔴 SISTEMA: ¡DISPARO EJECUTADO!";
+        } else {
+            debugDiv.innerText = "⚠️ SISTEMA: TIRO CANCELADO (MUY CORTO)";
+        }
+    });
+    
+    // Tecla R
+    window.addEventListener('keydown', e => {
+        if(e.key.toLowerCase() === 'r') resetGame();
+    });
+
+    // Ajustar canvas al redimensionar
+    window.addEventListener('resize', () => {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        repositionElements();
+    });
+
+    // Iniciar juego
+    repositionElements();
+    loop();
+
+</script>
+</body>
+</html>
