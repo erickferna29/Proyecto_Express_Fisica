@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ELECTRO GOLF: MOBILE EDITION</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- UI Panel -->
+    <div id="ui">
+        <h2>⚡ CONTROL</h2>
+        
+        <div class="control-group">
+            <label>🔋 CARGA: <span id="valCarga">+10</span> µC</label>
+            <input type="range" id="sliderCarga" min="-20" max="20" value="10" step="1">
+            <div class="charge-info">
+                📍 <b>Rojo (+)</b>: Repele ROJOS, Atrae AZULES<br>
+                📍 <b>Azul (-)</b>: Atrae ROJOS, Repele AZULES
+            </div>
+        </div>
+
+        <button id="btnReset">🔄 NUEVO NIVEL</button>
+        
+        <div class="instructions">
+            <div class="instructions-title">📋 INSTRUCCIONES</div>
+            <div class="instructions-content">
+                🎯 Click/Tap en la bola<br>
+                🖱️ Arrastra para apuntar<br>
+                🚀 Suelta para disparar<br>
+                💥 <b>Dispara múltiples veces!</b><br>
+                ⌨️ Presiona <span class="key-highlight">R</span> para reiniciar
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Panel -->
+    <div id="stats">
+        <div class="stats-title">📊 STATS</div>
+        <div class="stat-item">🎯 Tiros: <span id="statShots">0</span></div>
+        <div class="stat-item">🏆 Wins: <span id="statWins">0</span></div>
+        <div class="stat-item">⚡ Mejor: <span id="statBest">--</span></div>
+    </div>
+
+    <!-- Debug Info -->
+    <div id="debug">🟢 SISTEMA: LISTO</div>
+
+    <!-- Win Message -->
+    <div id="winMsg" class="win-msg">
+        🏆 ¡VICTORIA! 🏆<br>
+        <div class="win-shots">Tiros: <span id="finalShots">0</span></div>
+        <button id="btnWinReset">▶️ SIGUIENTE</button>
+    </div>
+
+    <!-- Game Canvas -->
+    <canvas id="gameCanvas"></canvas>
+
+    <script src="script.js"></script>
+</body>
+</html>

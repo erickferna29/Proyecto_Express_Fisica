@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ELECTRO GOLF: ULTIMATE</title>
+    <title>ELECTRO GOLF: FINAL CLEAN</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
         
@@ -224,29 +224,35 @@
         bestScore: null
     };
 
-    // --- FÍSICA ---
-    const K = 18000;  // Más fuerza electromagnética
-    const DT = 0.016;  // 60 FPS
-    const FRICTION = 0.994; // Menos fricción
-    const MAX_POWER = 100; // POTENCIA BRUTAL
-    const POWER_SENSITIVITY = 1.2; // MUY sensible
-    const SHOT_DURATION = 5000; // 5 segundos antes de detenerse (en milisegundos)
+    // --- FÍSICA MODIFICADA (TURBO MODE) ---
+    const K = 18000; 
+    const DT = 0.016; 
+    const FRICTION = 0.994; 
+    
+    // ¡AQUÍ ESTÁ LA MAGIA DEL DISPARO!
+    const MAX_POWER = 1200; // Máxima potencia brutal
+    const POWER_SENSITIVITY = 12.0; // Sensibilidad altísima
+    const SHOT_DURATION = 5000; // Duración del tiro antes de frenar automático
     
     // Partículas
     let particles = [];
 
-    // Mapa - Inicialización básica
+    // Mapa
     let cx = canvas.width / 2;
     let cy = canvas.height / 2;
     let hole = { x: canvas.width * 0.85, y: cy, r: 25 };
     
-    // Función para generar obstáculos aleatorios
+    // Obstáculos
+    let obstacles = [];
+
+    // Función para generar obstáculos aleatorios (SOLO SE LLAMA AL INICIO O RESET)
     function generateRandomObstacles() {
         obstacles = [];
-        const numObstacles = 3 + Math.floor(Math.random() * 2); // 3-4 obstáculos
+        const numObstacles = 3 + Math.floor(Math.random() * 2); 
         
         for(let i = 0; i < numObstacles; i++) {
             const isPositive = Math.random() > 0.5;
+            // Distribuir en el centro
             const x = cx + (Math.random() - 0.5) * (canvas.width * 0.5);
             const y = cy + (Math.random() - 0.5) * (canvas.height * 0.6);
             
@@ -259,10 +265,6 @@
             });
         }
     }
-    
-    // Obstáculos (Se generarán aleatoriamente)
-    let obstacles = [];
-    generateRandomObstacles();
 
     // Bola
     let ball = { 
@@ -271,22 +273,39 @@
         vx: 0, vy: 0, 
         q: 10, r: 12, 
         moving: false,
-        shotStartTime: 0 // Tiempo cuando se disparó
+        shotStartTime: 0 
     };
     
-    // Función para reposicionar elementos al cambiar tamaño
-    function repositionElements() {
+    // --- ARREGLO DEL BUG DE RESIZE ---
+    // Esta función SOLO mueve cosas, NO genera nuevas
+    function updateLayoutOnResize() {
+        let oldCx = cx;
+        let oldCy = cy;
+
+        // Nuevos centros
         cx = canvas.width / 2;
         cy = canvas.height / 2;
+
+        // Mover hoyo
         hole.x = canvas.width * 0.85;
         hole.y = cy;
         
-        // Regenerar obstáculos en nuevas posiciones aleatorias
-        generateRandomObstacles();
+        // Calcular desplazamiento del centro
+        let dx = cx - oldCx;
+        let dy = cy - oldCy;
+
+        // Mover obstáculos existentes (SIN regenerarlos)
+        obstacles.forEach(obs => {
+            obs.x += dx;
+            obs.y += dy;
+        });
         
+        // Mover bola si está quieta
         if(!ball.moving) {
             ball.startY = cy;
             ball.y = cy;
+            // La bola de inicio también se ajusta
+            // ball.x se queda igual o se puede ajustar si quieres
         }
     }
 
@@ -297,23 +316,16 @@
 
     // --- FUNCIONES UI ---
     
-    // Actualizar carga desde el slider
+    // Slider Carga
     sliderCarga.addEventListener('input', (e) => {
         let val = parseInt(e.target.value);
         ball.q = val;
-        
-        // Actualizar texto y color
         valCarga.innerText = (val > 0 ? "+" : "") + val;
-        // ROJO para positivo, AZUL para negativo
         valCarga.style.color = val > 0 ? "#ff3333" : "#00ccff";
-        
-        // Resetear visualmente si no se mueve
-        if(!ball.moving) {
-            draw();
-        }
+        if(!ball.moving) draw();
     });
 
-    // Función Reset
+    // Reset Completo (Aquí SÍ generamos nivel nuevo)
     function resetGame() {
         ball.x = ball.startX;
         ball.y = ball.startY;
@@ -325,8 +337,7 @@
         stats.shots = 0;
         statShots.innerText = stats.shots;
         
-        // Generar nuevos obstáculos aleatorios
-        generateRandomObstacles();
+        generateRandomObstacles(); // <--- Solo aquí creamos cosas nuevas
         
         debugDiv.innerText = "🟢 SISTEMA: NIVEL REINICIADO - NUEVOS OBSTÁCULOS";
         draw();
@@ -337,18 +348,16 @@
 
     // --- GAME LOOP ---
     function update() {
-        // Actualizar partículas
         particles = particles.filter(p => {
             p.life--;
             p.x += p.vx;
             p.y += p.vy;
-            p.vy += 0.2; // Gravedad
+            p.vy += 0.2; 
             p.alpha = p.life / p.maxLife;
             return p.life > 0;
         });
 
         if (ball.moving) {
-            // Verificar si han pasado 5 segundos desde el disparo
             const elapsedTime = Date.now() - ball.shotStartTime;
             if (elapsedTime >= SHOT_DURATION) {
                 ball.moving = false;
@@ -366,7 +375,6 @@
                 let distSq = dx*dx + dy*dy;
                 let dist = Math.sqrt(distSq);
 
-                // Rebote Obstáculos con efectos
                 if (dist < obs.r + ball.r + 5) {
                     let angle = Math.atan2(dy, dx);
                     ball.vx = Math.cos(angle) * 15; 
@@ -374,31 +382,18 @@
                     ball.x += Math.cos(angle) * 8; 
                     ball.y += Math.sin(angle) * 8;
                     
-                    // Generar partículas en rebote
                     for(let i=0; i<15; i++) {
                         particles.push({
-                            x: ball.x,
-                            y: ball.y,
-                            vx: (Math.random()-0.5)*8,
-                            vy: (Math.random()-0.5)*8,
-                            life: 30,
-                            maxLife: 30,
-                            color: obs.color,
-                            alpha: 1
+                            x: ball.x, y: ball.y,
+                            vx: (Math.random()-0.5)*8, vy: (Math.random()-0.5)*8,
+                            life: 30, maxLife: 30,
+                            color: obs.color, alpha: 1
                         });
                     }
                 }
 
-                // Fuerza eléctrica solo a distancia
                 if (dist > obs.r + ball.r + 10 && dist < 400) { 
-                    // Ley de Coulomb: F = k * q1 * q2 / r²
-                    // Mismo signo (+,+ o -,-) → F positiva → REPULSIÓN
-                    // Signo opuesto (+,- o -,+) → F negativa → ATRACCIÓN
                     let F = (K * ball.q * obs.q) / distSq;
-                    
-                    // dx/dy apuntan DESDE obstáculo HACIA bola
-                    // Si F > 0 (repulsión): empuja en dirección dx,dy (aleja)
-                    // Si F < 0 (atracción): empuja en dirección -dx,-dy (acerca)
                     fx += F * (dx / dist);
                     fy += F * (dy / dist);
                 }
@@ -407,74 +402,56 @@
             ball.vx += fx * DT;
             ball.vy += fy * DT;
             
-            // Limitar velocidad máxima
             let speed = Math.sqrt(ball.vx*ball.vx + ball.vy*ball.vy);
-            if(speed > 120) { // VELOCIDAD MÁXIMA BRUTAL
-                ball.vx = (ball.vx / speed) * 120;
-                ball.vy = (ball.vy / speed) * 120;
+            if(speed > 600) { // Límite de velocidad subido a 600
+                ball.vx = (ball.vx / speed) * 600;
+                ball.vy = (ball.vy / speed) * 600;
             }
             
             ball.vx *= FRICTION; 
             ball.vy *= FRICTION;
 
-            // Rastro de la bola (pelotitas blancas tipo golf)
             if(Math.random() < 0.2) {
                 particles.push({
-                    x: ball.x,
-                    y: ball.y,
-                    vx: 0,
-                    vy: 0,
-                    life: 15,
-                    maxLife: 15,
-                    color: '#ffffff',
-                    alpha: 0.8
+                    x: ball.x, y: ball.y, vx: 0, vy: 0,
+                    life: 15, maxLife: 15, color: '#ffffff', alpha: 0.8
                 });
             }
 
             if (Math.abs(ball.vx) < 0.05 && Math.abs(ball.vy) < 0.05) {
                 ball.moving = false;
-                ball.vx = 0;
-                ball.vy = 0;
+                ball.vx = 0; ball.vy = 0;
                 debugDiv.innerText = "🟢 SISTEMA: BOLA DETENIDA - LISTA PARA DISPARAR";
             }
 
             ball.x += ball.vx * DT;
             ball.y += ball.vy * DT;
 
-            // Paredes
             if (ball.x < 0 || ball.x > canvas.width) ball.vx *= -0.8;
             if (ball.y < 0 || ball.y > canvas.height) ball.vy *= -0.8;
             ball.x = Math.max(ball.r, Math.min(canvas.width - ball.r, ball.x));
             ball.y = Math.max(ball.r, Math.min(canvas.height - ball.r, ball.y));
 
-            // Win Condition
             let dxH = ball.x - hole.x;
             let dyH = ball.y - hole.y;
             if (Math.sqrt(dxH*dxH + dyH*dyH) < hole.r) {
                 ball.moving = false;
                 stats.wins++;
                 statWins.innerText = stats.wins;
-                
                 if(stats.bestScore === null || stats.shots < stats.bestScore) {
                     stats.bestScore = stats.shots;
                     statBest.innerText = stats.bestScore;
                 }
-                
                 finalShots.innerText = stats.shots;
                 winMsg.style.display = 'block';
                 
-                // Generar nuevos obstáculos para el siguiente nivel
-                generateRandomObstacles();
+                generateRandomObstacles(); 
                 
-                // Explosión de victoria tipo golf
                 for(let i=0; i<80; i++) {
                     particles.push({
-                        x: hole.x,
-                        y: hole.y,
-                        vx: (Math.random()-0.5)*20,
-                        vy: (Math.random()-0.5)*20 - 5,
-                        life: 80,
-                        maxLife: 80,
+                        x: hole.x, y: hole.y,
+                        vx: (Math.random()-0.5)*20, vy: (Math.random()-0.5)*20 - 5,
+                        life: 80, maxLife: 80,
                         color: ['#ffd700','#ffffff','#ff0000'][Math.floor(Math.random()*3)],
                         alpha: 1
                     });
@@ -484,7 +461,6 @@
     }
 
     function draw() {
-        // Fondo degradado animado
         const gradient = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 0, canvas.width/2, canvas.height/2, canvas.width);
         gradient.addColorStop(0, '#1a5f3a');
         gradient.addColorStop(0.5, '#2e8b57');
@@ -492,23 +468,15 @@
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
-        // Cuadricula brillante
         ctx.strokeStyle = 'rgba(0,255,255,0.15)';
         ctx.lineWidth = 1;
         for(let i=0; i<canvas.width; i+=50) { 
-            ctx.beginPath(); 
-            ctx.moveTo(i,0); 
-            ctx.lineTo(i,canvas.height); 
-            ctx.stroke(); 
+            ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,canvas.height); ctx.stroke(); 
         }
         for(let i=0; i<canvas.height; i+=50) { 
-            ctx.beginPath(); 
-            ctx.moveTo(0,i); 
-            ctx.lineTo(canvas.width,i); 
-            ctx.stroke(); 
+            ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(canvas.width,i); ctx.stroke(); 
         }
 
-        // Partículas
         particles.forEach(p => {
             ctx.globalAlpha = p.alpha * 0.8;
             ctx.fillStyle = p.color;
@@ -518,29 +486,19 @@
         });
         ctx.globalAlpha = 1;
 
-        // Hoyo de golf realista
         ctx.save();
-        
-        // Sombra profunda del hoyo
         ctx.shadowColor = '#000';
         ctx.shadowBlur = 30;
         ctx.shadowOffsetY = 5;
-        
-        // Hoyo negro profundo
         ctx.beginPath(); 
         ctx.arc(hole.x, hole.y, hole.r, 0, Math.PI*2);
         ctx.fillStyle = '#000'; 
         ctx.fill();
-        
-        // Borde del césped del hoyo
         ctx.strokeStyle = '#1a5f3a'; 
         ctx.lineWidth = 8; 
         ctx.stroke();
-        
-        // Bandera dentro del hoyo
         ctx.restore();
         
-        // Asta de la bandera
         ctx.strokeStyle = '#888';
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -548,7 +506,6 @@
         ctx.lineTo(hole.x, hole.y - 50);
         ctx.stroke();
         
-        // Bandera roja
         ctx.fillStyle = '#ff0000';
         ctx.beginPath();
         ctx.moveTo(hole.x, hole.y - 50);
@@ -557,20 +514,16 @@
         ctx.closePath();
         ctx.fill();
         
-        // Borde de la bandera
         ctx.strokeStyle = '#000';
         ctx.lineWidth = 1;
         ctx.stroke();
 
-        // Campos de fuerza y obstáculos
         obstacles.forEach(obs => {
-            // Campo de fuerza
             ctx.beginPath();
             ctx.arc(obs.x, obs.y, obs.r*2, 0, Math.PI*2);
             ctx.fillStyle = obs.color === '#ff3333' ? 'rgba(255,50,50,0.2)' : 'rgba(0,200,255,0.2)';
             ctx.fill();
             
-            // Obstáculo con brillo
             ctx.save();
             ctx.shadowColor = obs.color;
             ctx.shadowBlur = 20;
@@ -583,34 +536,24 @@
             ctx.stroke();
             ctx.restore();
             
-            // Símbolo de carga
             ctx.fillStyle = '#fff'; 
             ctx.font="bold 24px Arial"; 
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            // Mostrar el signo y valor aproximado
             let chargeVal = Math.abs(obs.q).toFixed(0);
             ctx.fillText(obs.q>0?"+":"−", obs.x, obs.y);
-            
-            // Mostrar valor de carga pequeño
             ctx.font="bold 12px Arial";
             ctx.fillText(chargeVal, obs.x, obs.y + 25);
         });
 
-        // Bola de golf realista
         ctx.save();
-        
-        // Sombra de la bola
         ctx.shadowColor = 'rgba(0,0,0,0.5)';
         ctx.shadowBlur = 10;
         ctx.shadowOffsetX = 3;
         ctx.shadowOffsetY = 3;
-        
-        // Color según carga: ROJO = positivo, AZUL = negativo
         const ballColor = ball.q > 0 ? '#ff3333' : '#00ccff';
         const glowColor = ball.q > 0 ? 'rgba(255,50,50,0.3)' : 'rgba(0,200,255,0.3)';
         
-        // Aura eléctrica (más visible cuando se mueve)
         if(ball.moving) {
             ctx.shadowColor = ballColor;
             ctx.shadowBlur = 25;
@@ -620,14 +563,12 @@
             ctx.fill();
         }
         
-        // Bola principal (blanca con patrón de golf)
         ctx.shadowBlur = 5;
         ctx.beginPath(); 
         ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2);
         ctx.fillStyle = '#ffffff';
         ctx.fill();
         
-        // Patrón de hoyuelos de golf
         ctx.fillStyle = '#e0e0e0';
         for(let angle = 0; angle < Math.PI * 2; angle += Math.PI / 6) {
             for(let radius = 3; radius < ball.r; radius += 4) {
@@ -639,14 +580,12 @@
             }
         }
         
-        // Borde de la bola
         ctx.strokeStyle = '#ccc'; 
         ctx.lineWidth = 2;
         ctx.beginPath(); 
         ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2);
         ctx.stroke();
         
-        // Indicador de carga en el centro
         ctx.shadowBlur = 0;
         ctx.fillStyle = ballColor;
         ctx.font = "bold 14px Arial";
@@ -654,22 +593,8 @@
         ctx.textBaseline = 'middle';
         ctx.fillText(ball.q > 0 ? "+" : "−", ball.x, ball.y);
         
-        // Timer visual cuando está en movimiento
-        if(ball.moving) {
-            const elapsedTime = Date.now() - ball.shotStartTime;
-            const remainingTime = Math.max(0, SHOT_DURATION - elapsedTime);
-            const seconds = (remainingTime / 1000).toFixed(1);
-            
-            ctx.fillStyle = 'rgba(0,0,0,0.8)';
-            ctx.fillRect(ball.x - 25, ball.y + 20, 50, 18);
-            ctx.fillStyle = remainingTime < 2000 ? '#ff0000' : '#00ff00';
-            ctx.font = 'bold 12px Arial';
-            ctx.fillText(seconds + 's', ball.x, ball.y + 29);
-        }
-        
         ctx.restore();
 
-        // Flecha de Tiro tipo golf con línea punteada
         if (isDragging) {
             let dx = dragStart.x - dragCurrent.x;
             let dy = dragStart.y - dragCurrent.y;
@@ -679,8 +604,6 @@
             const arrowColor = ball.q > 0 ? '#ff3333' : '#00ccff';
             
             ctx.save();
-            
-            // Línea punteada de trayectoria
             ctx.setLineDash([10, 10]);
             ctx.beginPath();
             ctx.moveTo(ball.x, ball.y);
@@ -693,7 +616,6 @@
             ctx.stroke();
             ctx.setLineDash([]);
             
-            // Flecha sólida dirección
             ctx.globalAlpha = 1;
             ctx.shadowColor = arrowColor;
             ctx.shadowBlur = 10;
@@ -706,7 +628,6 @@
             ctx.strokeStyle = arrowColor;
             ctx.stroke();
             
-            // Punta de flecha
             let angle = Math.atan2(dy, dx);
             ctx.beginPath();
             ctx.moveTo(shortX, shortY);
@@ -716,17 +637,14 @@
             ctx.fillStyle = arrowColor;
             ctx.fill();
             
-            // Medidor de potencia estilo golf
             const meterWidth = 120;
             const meterHeight = 20;
             const meterX = ball.x - meterWidth/2;
             const meterY = ball.y - 50;
             
-            // Fondo del medidor
             ctx.fillStyle = 'rgba(0,0,0,0.8)';
             ctx.fillRect(meterX, meterY, meterWidth, meterHeight);
             
-            // Barra de potencia con gradiente
             const powerPercent = power / MAX_POWER;
             const gradient = ctx.createLinearGradient(meterX, 0, meterX + meterWidth, 0);
             gradient.addColorStop(0, '#00ff00');
@@ -735,12 +653,10 @@
             ctx.fillStyle = gradient;
             ctx.fillRect(meterX + 2, meterY + 2, (meterWidth - 4) * powerPercent, meterHeight - 4);
             
-            // Borde del medidor
             ctx.strokeStyle = '#fff';
             ctx.lineWidth = 2;
             ctx.strokeRect(meterX, meterY, meterWidth, meterHeight);
             
-            // Texto de potencia
             ctx.fillStyle = '#fff';
             ctx.font = 'bold 12px Arial';
             ctx.textAlign = 'center';
@@ -758,7 +674,6 @@
 
     // --- EVENTOS MOUSE ---
     canvas.addEventListener('mousedown', e => {
-        // QUITAMOS LA RESTRICCIÓN - Ahora puedes disparar siempre
         const rect = canvas.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
@@ -766,7 +681,6 @@
         let dx = mouseX - ball.x;
         let dy = mouseY - ball.y;
         
-        // Detectar click en bola (o cerca)
         if (Math.sqrt(dx*dx + dy*dy) < 80) { 
             isDragging = true;
             dragStart = { x: mouseX, y: mouseY };
@@ -800,11 +714,10 @@
         let angle = Math.atan2(dy, dx);
 
         if (dist > 10) {
-            // Sumar velocidad al disparo existente (no reemplazar)
             ball.vx += Math.cos(angle) * power;
             ball.vy += Math.sin(angle) * power;
             ball.moving = true;
-            ball.shotStartTime = Date.now(); // Registrar tiempo de disparo
+            ball.shotStartTime = Date.now(); 
             stats.shots++;
             statShots.innerText = stats.shots;
             debugDiv.innerText = "🔴 SISTEMA: ¡DISPARO EJECUTADO! 💥";
@@ -818,15 +731,15 @@
         if(e.key.toLowerCase() === 'r') resetGame();
     });
 
-    // Ajustar canvas al redimensionar
+    // --- EVENTO RESIZE CORREGIDO ---
     window.addEventListener('resize', () => {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
-        repositionElements();
+        updateLayoutOnResize(); // <--- Llama a la función que NO regenera, solo ajusta
     });
 
     // Iniciar juego
-    repositionElements();
+    generateRandomObstacles(); // Generar primera vez
     loop();
 
 </script>
