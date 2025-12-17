@@ -202,6 +202,32 @@ input[type=range]::-moz-range-track {
     font-weight: bold;
 }
 
+/* === TELEMETRÍA === */
+.telemetry-row {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    margin-bottom: 4px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.main-force {
+    color: #00ffff; /* Cian brillante */
+    font-weight: bold;
+    border-bottom: 1px solid rgba(0,255,255,0.2);
+    padding-bottom: 4px;
+    margin-bottom: 6px;
+}
+
+.sub-force {
+    color: #aaaaaa; /* Gris técnico */
+    font-size: 11px;
+}
+
+.sub-force span {
+    color: #fff;
+}
+
 /* ===== STATS PANEL ===== */
 #stats {
     position: absolute;

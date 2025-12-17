@@ -15,6 +15,12 @@ const statBest = document.getElementById('statBest');
 const finalShots = document.getElementById('finalShots');
 const uiPanel = document.getElementById('ui');
 
+// TELEMETRÍA
+const telemetryPanel = document.getElementById('telemetryPanel');
+const hudTotal = document.getElementById('hudTotal');
+const hudFx = document.getElementById('hudFx');
+const hudFy = document.getElementById('hudFy');
+
 // Menú
 const startScreen = document.getElementById('startScreen');
 const btnStartGame = document.getElementById('btnStartGame');
@@ -374,9 +380,12 @@ function update() {
             ball.vx = 0;
             ball.vy = 0;
             debugDiv.innerText = "⏱️ SISTEMA: TIEMPO AGOTADO";
+            telemetryPanel.style.display = 'none';
             return;
         }
         
+        telemetryPanel.style.display = 'block'; // Mostrar el panel de telemetria
+
         let fx = 0, fy = 0;
 
         // Calcular fuerzas de obstáculos
@@ -414,9 +423,18 @@ function update() {
             }
         });
 
+        ball.fx = fx; // Guardar las fuerzas para despues mostrarlas
+        ball.fy = fy;
+
         // Aplicar fuerzas
         ball.vx += fx * DT;
         ball.vy += fy * DT;
+
+        // Actualizacion de telemetria
+        const totalForce = Math.sqrt(fx*fx + fy*fy);
+        hudTotal.innerText = totalForce.toFixed(1);
+        hudFx.innerText = fx.toFixed(1);
+        hudFy.innerText = fy.toFixed(1);
         
         // Límite de velocidad
         let speed = Math.sqrt(ball.vx*ball.vx + ball.vy*ball.vy);
@@ -907,7 +925,7 @@ btnStartGame.addEventListener('click', () => {
     statWins.innerText = "0";
     stats.bestScore = null;
     statBest.innerText = "--";
-    
+
     resetGame(); // Iniciar limpio
 });
 
