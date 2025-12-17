@@ -94,10 +94,18 @@ let dragCurrent = { x: 0, y: 0 };
 function generateRandomObstacles() {
     obstacles = [];
     const pos = getGamePositions();
-    const numObstacles = 3 + Math.floor(Math.random() * 2); 
     
-    for(let i = 0; i < numObstacles; i++) {
-        const isPositive = Math.random() > 0.5;
+    // Generar exactamente 2 partículas positivas y 2 negativas
+    const particleTypes = [true, true, false, false]; // true = positivo, false = negativo
+    
+    // Mezclar el array para posiciones aleatorias
+    for(let i = particleTypes.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [particleTypes[i], particleTypes[j]] = [particleTypes[j], particleTypes[i]];
+    }
+    
+    for(let i = 0; i < particleTypes.length; i++) {
+        const isPositive = particleTypes[i];
         // Generar en el área central (entre la bola y el hoyo)
         const minX = pos.ballStartX + 100;
         const maxX = pos.holeX - 100;
