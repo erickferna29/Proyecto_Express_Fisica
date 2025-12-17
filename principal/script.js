@@ -138,10 +138,12 @@ function generateRandomObstacles() {
         obstacles.push({
             x: finalX,
             y: finalY,
-            baseX: finalX, // Guardamos la posición original para que no se pierda al vibrar
-            baseY: finalY, // Guardamos la posición original
+            // Eliminamos baseX y baseY, ya no los necesitamos porque se moverán libremente
+            vx: (Math.random() - 0.5) * 20, // Pequeño impulso inicial aleatorio
+            vy: (Math.random() - 0.5) * 20,
             q: isPositive ? (20 + Math.random() * 30) : -(20 + Math.random() * 30),
             r: 30 + Math.random() * 15,
+            mass: 5, // Son 5 veces más pesados que la bola (para que se sientan sólidos)
             color: isPositive ? '#ff3333' : '#00ccff'
         });
     }
@@ -171,22 +173,11 @@ function updateLayoutOnResize() {
         ball.y = positions.ballStartY;
     }
     
-    // Reposicionar obstáculos proporcionalmente
+    // Reposicionar obstáculos para que no queden fuera
     obstacles.forEach(obs => {
-        // Usamos baseX en lugar de x para el cálculo relativo, para evitar drift
-        const relativeX = (obs.baseX || obs.x) / canvas.width;
-        const relativeY = (obs.baseY || obs.y) / canvas.height;
-        
-        obs.baseX = relativeX * canvas.width;
-        obs.baseY = relativeY * canvas.height;
-        
-        // Asegurar que estén dentro de límites
-        obs.baseX = Math.max(100, Math.min(canvas.width - 100, obs.baseX));
-        obs.baseY = Math.max(80, Math.min(canvas.height - 80, obs.baseY));
-
-        // Actualizamos la posición visual actual
-        obs.x = obs.baseX;
-        obs.y = obs.baseY;
+        // Simplemente aseguramos que sigan dentro del canvas nuevo
+        obs.x = Math.max(obs.r + WALL_MARGIN, Math.min(canvas.width - obs.r - WALL_MARGIN, obs.x));
+        obs.y = Math.max(obs.r + WALL_MARGIN, Math.min(canvas.height - obs.r - WALL_MARGIN, obs.y));
     });
 }
 
@@ -221,24 +212,135 @@ function resetGame() {
 }
 
 /**
+ * Función para regenerar un obstáculo en posición aleatoria
+ */
+function respawnObstacle(obs) {
+    const margin = WALL_MARGIN + 60; // Margen seguro
+    
+    // Nueva posición aleatoria
+    obs.x = margin + Math.random() * (canvas.width - margin * 2);
+    obs.y = margin + Math.random() * (canvas.height - margin * 2);
+    
+    // Nueva velocidad aleatoria
+    obs.vx = (Math.random() - 0.5) * 15;
+    obs.vy = (Math.random() - 0.5) * 15;
+    
+    // Opcional: Invertir el color momentáneamente o cambiar su carga ligeramente
+    // para dar variedad, pero por ahora mantenemos sus propiedades físicas.
+}
+
+/**
  * Actualiza la física del juego
  */
 function update() {
-    // === ANIMACIÓN FLUIDA DE OBSTÁCULOS (SIN LAG) ===
-    // Usamos el tiempo y funciones matemáticas para un movimiento suave
-    const time = Date.now() * 0.003; // Velocidad de la animación
-    
+    // === FÍSICA DE OBSTÁCULOS (DINÁMICA) ===
     obstacles.forEach((obs, index) => {
-        // Math.sin crea un movimiento de onda suave
-        // 'index' hace que cada bola se mueva a destiempo (desfase)
-        const offsetX = Math.sin(time + index) * 4; // 4px a los lados
-        const offsetY = Math.cos(time + index * 0.7) * 4; // 4px arriba/abajo
-        
-        // Aplicamos el movimiento sobre la posición base
-        obs.x = obs.baseX + offsetX;
-        obs.y = obs.baseY + offsetY;
+        let fx = 0;
+        let fy = 0;
+
+        // 1. Interacción con OTROS obstáculos (Fuerza Eléctrica)
+        for (let j = 0; j < obstacles.length; j++) {
+            if (index === j) continue; // No interactuar consigo mismo
+
+            let other = obstacles[j];
+            let dx = obs.x - other.x;
+            let dy = obs.y - other.y;
+            let distSq = dx*dx + dy*dy;
+            let dist = Math.sqrt(distSq);
+
+            // Evitar división por cero o fuerzas infinitas si se superponen
+            if (dist > obs.r + other.r) {
+                // Ley de Coulomb: F = k * q1 * q2 / r^2
+                let F = (K * obs.q * other.q) / distSq;
+                
+                // Aplicar fuerza (F = ma -> a = F/m)
+                fx += (F * (dx / dist)); 
+                fy += (F * (dy / dist));
+            } else {
+                // ... (código anterior de cálculo de distancia) ...
+
+                // Si están muy cerca (Colisión)
+                if (dist < obs.r + other.r) {
+                    // === CAMBIO: ELIMINAR Y REGENERAR ===
+                    
+                    // 1. Efecto visual de explosión (usando tu sistema de partículas existente)
+                    // Generamos partículas en el punto medio del choque
+                    let midX = (obs.x + other.x) / 2;
+                    let midY = (obs.y + other.y) / 2;
+                    
+                    for(let k=0; k<20; k++) {
+                        particles.push({
+                            x: midX, 
+                            y: midY,
+                            vx: (Math.random() - 0.5) * 15, // Expansión rápida
+                            vy: (Math.random() - 0.5) * 15,
+                            life: 40, 
+                            maxLife: 40,
+                            color: '#ffffff', // Flash blanco de energía
+                            alpha: 1
+                        });
+                    }
+
+                    // 2. Regenerar ambos obstáculos en puntos aleatorios
+                    respawnObstacle(obs);
+                    respawnObstacle(other);
+                    
+                    // 3. Feedback en debug
+                    debugDiv.innerText = "⚠️ COLAPSO DE CARGAS - REGENERANDO";
+                    
+                    // Forzamos continuar al siguiente ciclo para evitar cálculos erróneos en este frame
+                    continue; 
+                } 
+                else {
+                    // (Aquí sigue el código normal de Ley de Coulomb si NO se tocan)
+                    // Ley de Coulomb: F = k * q1 * q2 / r^2
+                    let F = (K * obs.q * other.q) / distSq;
+                    
+                    // Aplicar fuerza
+                    fx += (F * (dx / dist)); 
+                    fy += (F * (dy / dist));
+                }
+            }
+        }
+
+        // 2. Interacción con la BOLA DEL JUGADOR
+        // La bola también empuja/atrae a los obstáculos
+        if(ball.moving){
+            let dxB = obs.x - ball.x;
+            let dyB = obs.y - ball.y;
+            let distBSq = dxB*dxB + dyB*dyB;
+            let distB = Math.sqrt(distBSq);
+            
+            if (distB > 20) { // Mínima distancia para evitar glitches
+                let F_ball = (K * obs.q * ball.q) / distBSq;
+                fx += (F_ball * (dxB / distB));
+                fy += (F_ball * (dyB / distB));
+            }
+        }
+
+        // 3. Aplicar físicas al obstáculo
+        // Dividimos fuerza por masa (los obstáculos son pesados)
+        obs.vx += (fx / obs.mass) * DT;
+        obs.vy += (fy / obs.mass) * DT;
+
+        // Fricción (un poco más alta que la bola para que se detengan antes)
+        obs.vx *= 0.98; 
+        obs.vy *= 0.98;
+
+        // Actualizar posición
+        obs.x += obs.vx * DT;
+        obs.y += obs.vy * DT;
+
+        // 4. Colisión con PAREDES (Usando tu nuevo margen WALL_MARGIN)
+        if (obs.x < obs.r + WALL_MARGIN || obs.x > canvas.width - obs.r - WALL_MARGIN) {
+            obs.vx *= -0.8;
+            obs.x = Math.max(obs.r + WALL_MARGIN, Math.min(canvas.width - obs.r - WALL_MARGIN, obs.x));
+        }
+        if (obs.y < obs.r + WALL_MARGIN || obs.y > canvas.height - obs.r - WALL_MARGIN) {
+            obs.vy *= -0.8;
+            obs.y = Math.max(obs.r + WALL_MARGIN, Math.min(canvas.height - obs.r - WALL_MARGIN, obs.y));
+        }
     });
-    // ===============================================
 
     // Actualizar partículas
     particles = particles.filter(p => {
