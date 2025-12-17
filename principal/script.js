@@ -869,10 +869,10 @@ function handleInputUp(e) {
     e.preventDefault();
     isDragging = false;
     
-    const coords = getInputCoords(e);
-    
-    let dx = dragStart.x - coords.x;
-    let dy = dragStart.y - coords.y;
+    // Usar dragCurrent en lugar de obtener nuevas coordenadas
+    // porque en touchend, e.touches ya está vacío
+    let dx = dragStart.x - dragCurrent.x;
+    let dy = dragStart.y - dragCurrent.y;
     let dist = Math.sqrt(dx*dx + dy*dy);
     let power = Math.min(dist * POWER_SENSITIVITY, MAX_POWER);
     let angle = Math.atan2(dy, dx);
